@@ -1,0 +1,5 @@
+.target-kpi details{margin-top:10px}
+.target-kpi summary{color:var(--p);cursor:pointer;font-size:10px;font-weight:700}
+.target-details{display:grid;gap:7px;margin-top:10px;padding-top:9px;border-top:1px solid #e5eceb}
+.target-details b{display:block;color:var(--d);font-size:10px}
+.target-details small{margin-top:2px;text-transform:none}
