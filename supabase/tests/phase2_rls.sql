@@ -1,0 +1,3 @@
+-- Executar contra homologação com tokens reais de ADMIN, EDITOR, GESTOR e DIRETORIA.
+-- A validação automatizada é feita pelo script scripts/validate-supabase.mjs,
+-- que exige credenciais de teste fornecidas exclusivamente por variáveis de ambiente.
