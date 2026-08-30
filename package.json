@@ -23,6 +23,8 @@
     "official:targets:preview": "node --env-file=.env.local --env-file=.env.test.local scripts/load-official-targets.mjs",
     "official:targets:apply": "node --env-file=.env.local --env-file=.env.test.local scripts/load-official-targets.mjs --apply",
     "official:targets:verify": "node --env-file=.env.local --env-file=.env.test.local scripts/verify-official-targets.mjs",
+    "official:operational:preview": "node --env-file=.env.local --env-file=.env.test.local scripts/load-official-operational.mjs",
+    "official:operational:apply": "node --env-file=.env.local --env-file=.env.test.local scripts/load-official-operational.mjs --apply",
     "homologate:supabase": "node --env-file=.env.local --env-file=.env.test.local scripts/load-homologation.mjs",
     "verify:homologation": "node --env-file=.env.local --env-file=.env.test.local scripts/verify-homologation.mjs",
     "test:supabase": "node --env-file=.env.local --env-file=.env.test.local scripts/validate-supabase.mjs"

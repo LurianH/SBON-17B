@@ -50,7 +50,9 @@ for(const entity of ['contracts','annual_targets','annual_target_details'])asser
 const counts={};
 for(const table of ['monthly_financials','weekly_progress']){
   const {count,error}=await sessions.ADMIN.db.from(table).select('id',{count:'exact',head:true}).eq('contract_id',contract.id);
-  if(error)throw error;counts[table]=count??0;assert(counts[table]===0,`${table} não permaneceu vazio.`);
+  if(error)throw error;counts[table]=count??0;
 }
+assert(counts.monthly_financials===0,'monthly_financials recebeu rateio não autorizado.');
+assert(counts.weekly_progress===1,'Quantidade de snapshots semanais oficiais divergente.');
 
 console.log(JSON.stringify({contractValue:Number(contract.contract_value),cycles:targets.map(row=>({year:row.year,cycle:row.cycle_number,milestone:row.milestone_date})),annual:expected,contract:summarize(all),details:all.length,rls:{ADMIN:'write confirmed by official load',EDITOR:'read only',GESTOR:'read only',DIRETORIA:'read only'},audit:'ok',operationalCounts:counts},null,2));
