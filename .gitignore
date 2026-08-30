@@ -31,7 +31,8 @@ yarn-error.log*
 # local tools and temporary files
 /.idea/
 /.vscode/
-/.openai/
+/.openai/*
+!/.openai/hosting.json
 /tmp/
 /temp/
 *.tmp
