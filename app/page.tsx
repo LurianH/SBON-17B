@@ -1,4 +1,5 @@
 'use client';
+import {MainNavigation} from '@/components/MainNavigation';
 import {useEffect,useState} from 'react';
 import Link from 'next/link';
 import {loadDashboardData,type DashboardData} from '@/lib/dashboard-data';
@@ -16,7 +17,7 @@ export default function Home(){
  const projectionRatio=data.target&&data.annualProjection?Math.min(100,data.annualProjection/data.target*100):0;
  const deviationText=data.deviation===null?'Aguardando dados':new Intl.NumberFormat('pt-BR',{style:'percent',minimumFractionDigits:1,maximumFractionDigits:1}).format(data.deviation/100);
  const sparks=data.weeklyExecuted.length?data.weeklyExecuted.map(v=>{const min=Math.min(...data.weeklyExecuted),max=Math.max(...data.weeklyExecuted);return max===min?50:25+(v-min)/(max-min)*60}):[];
- return <div className={'app '+(director?'director':'')}><header className="topbar"><div className="brand"><span className="mark">V</span><span><b>vitalux</b><small>ECOATIVA</small></span></div><nav><Link className="active" href="/">Dashboard</Link><Link href="/analise">Análise</Link><Link href="/atualizar">Atualizar</Link><Link href="/historico">Histórico</Link></nav><div className="header-actions"><span className="updated">Atualizado em <b>{date(data.latestDate)}</b></span><button onClick={()=>setDirector(!director)}>{director?'Sair do modo':'Modo Diretoria'}</button><LogoutButton/><span className="avatar" aria-label="Usuário">●</span></div></header>
+ return <div className={'app '+(director?'director':'')}><header className="topbar"><div className="brand"><span className="mark">V</span><span><b>vitalux</b><small>ECOATIVA</small></span></div><MainNavigation/><div className="header-actions"><span className="updated">Atualizado em <b>{date(data.latestDate)}</b></span><button onClick={()=>setDirector(!director)}>{director?'Sair do modo':'Modo Diretoria'}</button><LogoutButton/><span className="avatar" aria-label="Usuário">●</span></div></header>
  <main><section className="intro"><div><span className="eyebrow">PAINEL EXECUTIVO</span><h1>SBON 17B</h1><p>Visão consolidada de desempenho do contrato{data.source==='demo'?' · Demonstração local':''}</p></div><div className="status"><i/> {data.status?statusLabel[data.status]:'Projeção em formação'}</div></section>
  <section className="kpis">
   <article className="kpi"><span>Valor do contrato</span><strong>{money(data.contractValue,'Aguardando definição')}</strong><small>Contrato consolidado</small></article>

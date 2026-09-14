@@ -1,0 +1,27 @@
+{
+  "migration": "supabase/migrations/20260911183427_add_engineering_projects.sql",
+  "statements": 36,
+  "sha256": "781df1dbc07c7388f2c1875b2d3f7de421477c3299bf0280a199dac2f668a24b",
+  "exactBytesPreserved": true,
+  "begin": true,
+  "rollback": true,
+  "afterRollback": "SELECT only",
+  "checks": [
+    {
+      "file": "supabase/migrations/20260911183427_add_engineering_projects.sql",
+      "grammar": "PASS",
+      "sqlExecuted": false
+    },
+    {
+      "file": "docs/sql/engenharia-01-preflight-readonly.sql",
+      "grammar": "PASS",
+      "sqlExecuted": false
+    },
+    {
+      "file": "docs/sql/engenharia-02-migration-rollback.sql",
+      "grammar": "PASS",
+      "sqlExecuted": false
+    }
+  ],
+  "limitation": "Somente gramática SQL externa. Não executa scripts nem resolve dependências remotas; corpos PL/pgSQL originais preservados, não recompilados nesta etapa."
+}

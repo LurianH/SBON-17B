@@ -1,6 +1,7 @@
 export type AppRole = 'ADMIN' | 'EDITOR' | 'GESTOR' | 'DIRETORIA';
 
 const routeRoles: Array<{ prefix: string; roles: AppRole[] }> = [
+  { prefix: '/engenharia', roles: ['ADMIN', 'EDITOR', 'GESTOR', 'DIRETORIA'] },
   { prefix: '/admin', roles: ['ADMIN'] },
   { prefix: '/atualizar', roles: ['ADMIN', 'EDITOR'] },
   { prefix: '/historico', roles: ['ADMIN', 'GESTOR'] },
