@@ -1,2 +1,3 @@
 import {defineConfig} from 'vitest/config';
-export default defineConfig({test:{environment:'node',include:['lib/**/*.test.ts']}});
+import {fileURLToPath} from 'node:url';
+export default defineConfig({resolve:{alias:{'@':fileURLToPath(new URL('.',import.meta.url))}},esbuild:{jsx:'automatic'},test:{environment:'node',include:['lib/**/*.test.ts']}});

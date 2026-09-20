@@ -91,6 +91,7 @@ function History({projectId}: {projectId: string}) {
 
 function EngineeringForm({project, categories, contractId, onClose, onSaved}: {project: CurrentProject | null; categories: Category[]; contractId: string; onClose: () => void; onSaved: () => void}) {
   const router = useRouter(), current = project?.current;
+  const [referenceDate, setReferenceDate] = useState(localDate);
   const [concept, setConcept] = useState(current?.concept_status ?? 'PENDING');
   const [executive, setExecutive] = useState(current?.executive_status ?? 'PENDING');
   const [message, setMessage] = useState(''), [busy, setBusy] = useState(false);
@@ -114,12 +115,12 @@ function EngineeringForm({project, categories, contractId, onClose, onSaved}: {p
   }
   return <section id="engineering-form" className="panel engineering-form"><h2>{project ? `Atualizar · ${project.project_name}` : 'Cadastrar projeto'}</h2><p>Informe os valores acumulados deste projeto. Deixe em branco o que ainda não foi informado.</p>{project && <p>{project.municipality} · {segments[project.segment_type]} · {categories.find(c => c.code === project.project_category)?.label}</p>}
     <form action={submit} className="data-form"><fieldset disabled={busy}><div className="fields">{!project && <><label>Cidade<select name="municipality" required><option value="">Selecione</option>{municipalities.map(c => <option key={c}>{c}</option>)}</select></label><label>Segmento<select name="segment_type" required><option value="">Selecione</option>{Object.entries(segments).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>Categoria<select name="project_category" required>{categories.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}</select></label><label>Projeto / identificação<input name="project_name" maxLength={200} required/></label></>}
-      <label>Data de referência<input type="date" name="reference_date" defaultValue={localDate()} required/></label>
+      <label>Data de referência<input type="date" name="reference_date" value={referenceDate} onChange={e => setReferenceDate(e.target.value)} required/></label>
       <label>Concepção<select name="concept_status" value={concept} onChange={e => setConcept(e.target.value as typeof concept)}>{Object.entries(conceptLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
-      {concept === 'APPROVED' && <label>Data da aprovação<input type="date" name="concept_approved_at" defaultValue={current?.concept_approved_at ?? ''} required/></label>}
+      {concept === 'APPROVED' && <label>Data da aprovação<input type="date" name="concept_approved_at" max={referenceDate} defaultValue={current?.concept_approved_at ?? ''} required/></label>}
       <label>Projeto executivo<select name="executive_status" value={executive} onChange={e => setExecutive(e.target.value as typeof executive)}>{Object.entries(executiveLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
-      {executive === 'COMPLETED' && <label>Data da finalização<input type="date" name="executive_completed_at" defaultValue={current?.executive_completed_at ?? ''} required/></label>}
+      {executive === 'COMPLETED' && <label>Data da finalização<input type="date" name="executive_completed_at" max={referenceDate} defaultValue={current?.executive_completed_at ?? ''} required/></label>}
       <label>Economias aprovadas<input type="number" min="0" max="2147483647" step="1" name="approved_economies" defaultValue={current?.approved_economies ?? ''}/></label><label>Metragem aprovada (m)<input type="number" min="0" max="99999999999.999" step="0.001" name="approved_length_m" defaultValue={current?.approved_length_m ?? ''}/></label><label className="wide">Observação<textarea name="notes" maxLength={2000} defaultValue=""/></label>
-    </div></fieldset><div className="engineering-buttons"><button disabled={busy} type="submit">{busy ? 'Salvando…' : 'Salvar atualização'}</button><button type="button" disabled={busy} onClick={onClose}>Cancelar</button></div><p role="status" aria-live="polite">{message}</p></form>
+    </div></fieldset><div className="engineering-buttons"><button disabled={busy} type="submit">{busy ? 'Salvando…' : project ? 'Salvar atualização' : 'Cadastrar projeto'}</button><button type="button" disabled={busy} onClick={onClose}>Cancelar</button></div><p role="status" aria-live="polite">{message}</p></form>
   </section>;
 }
