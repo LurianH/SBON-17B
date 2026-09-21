@@ -3,9 +3,10 @@
 import {useState} from 'react';
 import {useRouter} from 'next/navigation';
 import {createClient} from '@/lib/supabase/client';
-import {canWriteEngineering, conceptLabels, currentProjects, emptyFilters, executiveLabels, filterProjects,
+import {canWriteEngineering, conceptLabels, currentProjects, deliveryLabels, emptyFilters, executiveLabels, filterProjects,
   municipalities, projectSchema, segments, summarizeEngineering, updateSchema,
   type Category, type CurrentProject, type EngineeringFilters, type Project, type Update} from '@/lib/engineering';
+import {EngineeringWaterLinearSection} from '@/components/EngineeringWaterLinearSection';
 
 const format = (v: number | null, meters = false) => v === null ? 'Aguardando atualização' : new Intl.NumberFormat('pt-BR', {maximumFractionDigits: 3}).format(v) + (meters ? ' m' : '');
 const day = (v: string) => new Intl.DateTimeFormat('pt-BR').format(new Date(v + 'T12:00:00'));
@@ -36,6 +37,10 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
   const canEdit = canWriteEngineering(role) && Boolean(contractId) && !director;
   const filtered = Object.values(filters).some(Boolean);
   const general = visible.filter(p => p.project_category === 'GENERAL'), statics = visible.filter(p => p.project_category === 'STATIC');
+  const linearVisible = all.filter(p => p.project_type === 'PE' && p.project_category === 'WATER_LINEAR'
+    && (!filters.city || p.municipality === filters.city)
+    && (!filters.segment || p.segment_type === filters.segment)
+    && (!filters.category || p.project_category === filters.category));
   const fields: {key: keyof EngineeringFilters; label: string; options: [string, string][]}[] = [
     {key: 'city', label: 'Cidade', options: municipalities.map(c => [c, c])},
     {key: 'segment', label: 'Segmento', options: Object.entries(segments)},
@@ -60,21 +65,23 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
     <section className="panel engineering-totals" aria-label="Consolidação de economias e metragem">
       <SegmentAmounts title="Água" projects={visible.filter(p => p.segment_type === 'WATER')}/><SegmentAmounts title="Esgoto" projects={visible.filter(p => p.segment_type === 'SEWER')}/><SegmentAmounts title="Total" projects={visible}/>
     </section>
+    {!notice && <EngineeringWaterLinearSection projects={linearVisible} canEdit={canEdit} contractId={contractId} onSaved={() => setFeedback('Atualização de obra linear salva. Histórico preservado.')}/>}
     {canEdit && editing && <EngineeringForm key={editing === 'new' ? 'new' : editing.id} project={editing === 'new' ? null : editing} categories={categories} contractId={contractId!} onClose={() => setEditing(null)} onSaved={() => {setEditing(null); setFeedback('Atualização salva. Histórico preservado.');}}/>}
     <section className="engineering-cities" aria-label="Aprovações por cidade">{municipalities.filter(city => !filters.city || filters.city === city).map(city => {
       const cityProjects = visible.filter(p => p.municipality === city);
       return <article className="panel" key={city}><h2>{city}</h2><div className="engineering-city-segments"><SegmentAmounts title="Água" projects={cityProjects.filter(p => p.segment_type === 'WATER')}/><SegmentAmounts title="Esgoto" projects={cityProjects.filter(p => p.segment_type === 'SEWER')}/></div>
         {cityProjects.length > 0 && <details><summary>Ver projetos ({cityProjects.length})</summary>{Object.entries(segments).map(([segment, label]) => <section key={segment}><h3>{label}</h3>{cityProjects.filter(p => p.segment_type === segment).map(p => <div className="engineering-project" key={p.id}><h4>{p.project_name}</h4><span>{categories.find(c => c.code === p.project_category)?.label ?? p.project_category}</span>
-          <dl><div><dt>Concepção</dt><dd>{p.current ? conceptLabels[p.current.concept_status] : 'Aguardando atualização'}</dd></div><div><dt>Executivo</dt><dd>{p.current ? executiveLabels[p.current.executive_status] : 'Aguardando atualização'}</dd></div><div><dt>Economias</dt><dd>{format(p.current?.approved_economies ?? null)}</dd></div><div><dt>Metragem</dt><dd>{format(p.current?.approved_length_m == null ? null : Number(p.current.approved_length_m), true)}</dd></div></dl>
+          {p.project_category === 'WATER_LINEAR' && p.project_type === 'PE' ? <dl><div><dt>Entrega</dt><dd>{p.current?.delivery_status ? deliveryLabels[p.current.delivery_status] : 'Aguardando atualização'}</dd></div><div><dt>Economias</dt><dd>{format(p.current?.approved_economies ?? null)}</dd></div><div><dt>PEAD DE63</dt><dd>{format(p.current?.pead_de63_length_m == null ? null : Number(p.current.pead_de63_length_m), true)}</dd></div><div><dt>PEAD DE110</dt><dd>{format(p.current?.pead_de110_length_m == null ? null : Number(p.current.pead_de110_length_m), true)}</dd></div></dl>
+            : <dl><div><dt>Concepção</dt><dd>{p.current?.concept_status ? conceptLabels[p.current.concept_status] : 'Não informada'}</dd></div><div><dt>Executivo</dt><dd>{p.current?.executive_status ? executiveLabels[p.current.executive_status] : 'Não informado'}</dd></div><div><dt>Economias</dt><dd>{format(p.current?.approved_economies ?? null)}</dd></div><div><dt>Metragem</dt><dd>{format(p.current?.approved_length_m == null ? null : Number(p.current.approved_length_m), true)}</dd></div></dl>}
           {p.current && <small>Última atualização: {instant(p.current.created_at)} · Referência: {day(p.current.reference_date)}</small>}
-          {!director && <History projectId={p.id}/>}{canEdit && <button onClick={() => {setEditing(p); requestAnimationFrame(() => document.getElementById('engineering-form')?.scrollIntoView({behavior: 'smooth'}));}}>Atualizar projeto</button>}
+          {!director && <History projectId={p.id} linear={p.project_category === 'WATER_LINEAR' && p.project_type === 'PE'} />}{canEdit && !(p.project_category === 'WATER_LINEAR' && p.project_type === 'PE') && <button onClick={() => {setEditing(p); requestAnimationFrame(() => document.getElementById('engineering-form')?.scrollIntoView({behavior: 'smooth'}));}}>Atualizar projeto</button>}
         </div>)}</section>)}</details>}
       </article>;
     })}</section>
   </div>;
 }
 
-function History({projectId}: {projectId: string}) {
+function History({projectId, linear = false}: {projectId: string; linear?: boolean}) {
   const [rows, setRows] = useState<Update[] | null>(null), [error, setError] = useState(''), [busy, setBusy] = useState(false), [more, setMore] = useState(true);
   async function load() {
     if (busy) return; setBusy(true); setError('');
@@ -86,7 +93,10 @@ function History({projectId}: {projectId: string}) {
       setRows([...(rows ?? []), ...result.data as Update[]]); setMore(result.data.length === 20);
     } catch {setError('Não foi possível carregar o histórico. Tente novamente.');} finally {setBusy(false);}
   }
-  return <details onToggle={event => {if (event.currentTarget.open && rows === null && !busy) void load();}}><summary>Histórico de atualizações</summary>{rows?.map(row => <div className="engineering-snapshot" key={row.id}><b>Referência: {day(row.reference_date)}</b><p>{conceptLabels[row.concept_status]}{row.concept_approved_at ? ` em ${day(row.concept_approved_at)}` : ''} · Executivo: {executiveLabels[row.executive_status]}{row.executive_completed_at ? ` em ${day(row.executive_completed_at)}` : ''}</p><p>Economias: {format(row.approved_economies)} · Metragem: {format(row.approved_length_m == null ? null : Number(row.approved_length_m), true)}</p><small>Registrado em {instant(row.created_at)} · Responsável: {row.created_by}</small>{row.notes && <p>{row.notes}</p>}</div>)}{rows?.length === 0 && <p>Aguardando atualização</p>}{error && <p role="alert">{error}</p>}{busy ? <p role="status">Carregando histórico…</p> : (error || (rows && more)) && <button onClick={() => void load()}>{error ? 'Tentar novamente' : 'Carregar anteriores'}</button>}</details>;
+  return <details onToggle={event => {if (event.currentTarget.open && rows === null && !busy) void load();}}><summary>Histórico de atualizações</summary>{rows?.map(row => <div className="engineering-snapshot" key={row.id}><b>Referência: {day(row.reference_date)}</b>{linear
+    ? <p>Status da entrega: {row.delivery_status ? deliveryLabels[row.delivery_status] : 'Não informado'} · Economias: {format(row.approved_economies)} · DE63: {format(row.pead_de63_length_m == null ? null : Number(row.pead_de63_length_m), true)} · DE110: {format(row.pead_de110_length_m == null ? null : Number(row.pead_de110_length_m), true)} · Total: {format(row.approved_length_m == null ? null : Number(row.approved_length_m), true)}</p>
+    : <><p>Concepção: {row.concept_status ? conceptLabels[row.concept_status] : 'Não informada'}{row.concept_approved_at ? ` em ${day(row.concept_approved_at)}` : ''} · Executivo: {row.executive_status ? executiveLabels[row.executive_status] : 'Não informado'}{row.executive_completed_at ? ` em ${day(row.executive_completed_at)}` : ''}</p><p>Economias: {format(row.approved_economies)} · Metragem: {format(row.approved_length_m == null ? null : Number(row.approved_length_m), true)}</p></>}
+    <small>Registrado em {instant(row.created_at)} · Responsável: {row.created_by}</small>{row.notes && <p>{row.notes}</p>}</div>)}{rows?.length === 0 && <p>Aguardando atualização</p>}{error && <p role="alert">{error}</p>}{busy ? <p role="status">Carregando histórico…</p> : (error || (rows && more)) && <button onClick={() => void load()}>{error ? 'Tentar novamente' : 'Carregar anteriores'}</button>}</details>;
 }
 
 function EngineeringForm({project, categories, contractId, onClose, onSaved}: {project: CurrentProject | null; categories: Category[]; contractId: string; onClose: () => void; onSaved: () => void}) {
@@ -114,7 +124,7 @@ function EngineeringForm({project, categories, contractId, onClose, onSaved}: {p
     } catch (error) {setMessage(error instanceof Error ? error.message : 'Não foi possível salvar.');} finally {setBusy(false);}
   }
   return <section id="engineering-form" className="panel engineering-form"><h2>{project ? `Atualizar · ${project.project_name}` : 'Cadastrar projeto'}</h2><p>Informe os valores acumulados deste projeto. Deixe em branco o que ainda não foi informado.</p>{project && <p>{project.municipality} · {segments[project.segment_type]} · {categories.find(c => c.code === project.project_category)?.label}</p>}
-    <form action={submit} className="data-form"><fieldset disabled={busy}><div className="fields">{!project && <><label>Cidade<select name="municipality" required><option value="">Selecione</option>{municipalities.map(c => <option key={c}>{c}</option>)}</select></label><label>Segmento<select name="segment_type" required><option value="">Selecione</option>{Object.entries(segments).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>Categoria<select name="project_category" required>{categories.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}</select></label><label>Projeto / identificação<input name="project_name" maxLength={200} required/></label></>}
+    <form action={submit} className="data-form"><fieldset disabled={busy}><div className="fields">{!project && <><label>Cidade<select name="municipality" required><option value="">Selecione</option>{municipalities.map(c => <option key={c}>{c}</option>)}</select></label><label>Segmento<select name="segment_type" required><option value="">Selecione</option>{Object.entries(segments).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>Categoria<select name="project_category" required>{categories.filter(c => c.code !== 'WATER_LINEAR').map(c => <option key={c.code} value={c.code}>{c.label}</option>)}</select></label><label>Projeto / identificação<input name="project_name" maxLength={200} required/></label></>}
       <label>Data de referência<input type="date" name="reference_date" value={referenceDate} onChange={e => setReferenceDate(e.target.value)} required/></label>
       <label>Concepção<select name="concept_status" value={concept} onChange={e => setConcept(e.target.value as typeof concept)}>{Object.entries(conceptLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
       {concept === 'APPROVED' && <label>Data da aprovação<input type="date" name="concept_approved_at" max={referenceDate} defaultValue={current?.concept_approved_at ?? ''} required/></label>}

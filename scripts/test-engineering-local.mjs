@@ -17,5 +17,6 @@ try {
     console.log(`Migration OK: ${file}`);
   }
   await db.exec(await readFile('supabase/tests/engineering_rls.sql', 'utf8'));
-  console.log('PASS: Engenharia constraints, atomicity, history, audit, grants, RLS and invoker view. Test fixtures rolled back.');
+  await db.exec(await readFile('supabase/tests/engineering_water_linear_rls.sql', 'utf8'));
+  console.log('PASS: Engenharia and Água / Obras Lineares constraints, identity, atomicity, history, audit, grants, RLS and invoker view. Test fixtures rolled back.');
 } finally {await db.close();}
