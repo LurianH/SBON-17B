@@ -108,6 +108,19 @@ export function summarizeEngineering(projects: CurrentProject[]) {
     economies: values('approved_economies'), length: values('approved_length_m')};
 }
 
+export function summarizeEngineeringDisplay(projects: CurrentProject[]) {
+  const waterProjects = projects.filter(p => p.segment_type === 'WATER');
+  const sewerProjects = projects.filter(p => p.segment_type === 'SEWER');
+  const water = summarizeEngineering(waterProjects);
+  const sewer = summarizeEngineering(sewerProjects);
+  const total = summarizeEngineering(projects);
+  return {
+    water: {count: waterProjects.length, economies: water.economies, length: water.length},
+    sewer: {count: sewerProjects.length, length: sewer.length},
+    total: {count: projects.length, waterCount: waterProjects.length, economies: water.economies, length: total.length},
+  };
+}
+
 export type EngineeringFilters = {city: string; segment: string; category: string; concept: string; executive: string};
 export const emptyFilters: EngineeringFilters = {city: '', segment: '', category: '', concept: '', executive: ''};
 export function filterProjects(projects: CurrentProject[], filters: EngineeringFilters) {

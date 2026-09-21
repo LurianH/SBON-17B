@@ -4,7 +4,7 @@ import {useState} from 'react';
 import {useRouter} from 'next/navigation';
 import {createClient} from '@/lib/supabase/client';
 import {canWriteEngineering, conceptLabels, currentProjects, deliveryLabels, emptyFilters, executiveLabels, filterProjects,
-  municipalities, projectSchema, segments, summarizeEngineering, updateSchema,
+  municipalities, projectSchema, segments, summarizeEngineering, summarizeEngineeringDisplay, updateSchema,
   type Category, type CurrentProject, type EngineeringFilters, type Project, type Update} from '@/lib/engineering';
 import {EngineeringWaterLinearSection} from '@/components/EngineeringWaterLinearSection';
 
@@ -13,17 +13,24 @@ const day = (v: string) => new Intl.DateTimeFormat('pt-BR').format(new Date(v + 
 const instant = (v: string) => new Intl.DateTimeFormat('pt-BR', {dateStyle: 'short', timeStyle: 'short'}).format(new Date(v));
 const localDate = () => {const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;};
 
-function Amount({metric, meters = false}: {metric: {value: number | null; partial: boolean}; meters?: boolean}) {
-  return <><strong>{format(metric.value, meters)}</strong>{metric.partial && metric.value !== null && <small>Parcial · há projetos aguardando atualização</small>}</>;
+function Amount({metric, meters = false, emptyLabel}: {metric: {value: number | null; partial: boolean}; meters?: boolean; emptyLabel?: string}) {
+  return <><strong>{metric.value === null && emptyLabel ? emptyLabel : format(metric.value, meters)}</strong>{metric.partial && metric.value !== null && <small>Parcial · há projetos aguardando atualização</small>}</>;
 }
 function StatusKpi({title, projects, executive = false}: {title: string; projects: CurrentProject[]; executive?: boolean}) {
   const summary = summarizeEngineering(projects), percent = executive ? summary.executivePercent : summary.conceptPercent;
   return <article className="kpi"><span>{title}</span><strong>{percent === null ? 'Aguardando cadastro' : `${new Intl.NumberFormat('pt-BR', {maximumFractionDigits: 1}).format(percent)}%`}</strong>
     {percent !== null && <><small>{executive ? summary.completed : summary.approved} de {summary.count} projetos ativos</small><progress max={100} value={percent} aria-label={title}/></>}</article>;
 }
-function SegmentAmounts({projects, title}: {projects: CurrentProject[]; title: string}) {
-  const summary = summarizeEngineering(projects);
-  return <div className="engineering-segment"><h3>{title}</h3><span>Economias aprovadas</span><Amount metric={summary.economies}/><span>Metragem aprovada</span><Amount metric={summary.length} meters/></div>;
+function SegmentAmounts({projects, title, mode}: {projects: CurrentProject[]; title: string; mode: 'water' | 'sewer' | 'total'}) {
+  const summary = summarizeEngineeringDisplay(projects);
+  if (!summary[mode].count) return <div className="engineering-segment"><h3>{title}</h3><p>Sem projetos cadastrados</p></div>;
+  const showEconomies = mode !== 'sewer';
+  const economyMetric = mode === 'water' ? summary.water.economies : mode === 'total' ? summary.total.economies : null;
+  const lengthMetric = mode === 'water' ? summary.water.length : mode === 'sewer' ? summary.sewer.length : summary.total.length;
+  const economyLabel = mode === 'total' ? 'Economias aprovadas (Água)' : 'Economias aprovadas';
+  const economyEmptyLabel = mode === 'total' && !summary.total.waterCount ? 'Sem projetos de Água' : undefined;
+  const lengthLabel = mode === 'total' ? 'Metragem aprovada (Água + Esgoto)' : 'Metragem aprovada';
+  return <div className="engineering-segment"><h3>{title}</h3>{showEconomies && economyMetric && <><span>{economyLabel}</span><Amount metric={economyMetric} emptyLabel={economyEmptyLabel}/></>}<span>{lengthLabel}</span><Amount metric={lengthMetric} meters/></div>;
 }
 
 export function EngineeringPanel({projects, updates, categories, role, contractId, notice}: {
@@ -63,13 +70,13 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
       <StatusKpi title="Estática – Projeto executivo" projects={statics} executive/>
     </section>
     <section className="panel engineering-totals" aria-label="Consolidação de economias e metragem">
-      <SegmentAmounts title="Água" projects={visible.filter(p => p.segment_type === 'WATER')}/><SegmentAmounts title="Esgoto" projects={visible.filter(p => p.segment_type === 'SEWER')}/><SegmentAmounts title="Total" projects={visible}/>
+      <SegmentAmounts title="Água" mode="water" projects={visible.filter(p => p.segment_type === 'WATER')}/><SegmentAmounts title="Esgoto" mode="sewer" projects={visible.filter(p => p.segment_type === 'SEWER')}/><SegmentAmounts title="Total" mode="total" projects={visible}/>
     </section>
     {!notice && <EngineeringWaterLinearSection projects={linearVisible} canEdit={canEdit} contractId={contractId} onSaved={() => setFeedback('Atualização de obra linear salva. Histórico preservado.')}/>}
     {canEdit && editing && <EngineeringForm key={editing === 'new' ? 'new' : editing.id} project={editing === 'new' ? null : editing} categories={categories} contractId={contractId!} onClose={() => setEditing(null)} onSaved={() => {setEditing(null); setFeedback('Atualização salva. Histórico preservado.');}}/>}
     <section className="engineering-cities" aria-label="Aprovações por cidade">{municipalities.filter(city => !filters.city || filters.city === city).map(city => {
       const cityProjects = visible.filter(p => p.municipality === city);
-      return <article className="panel" key={city}><h2>{city}</h2><div className="engineering-city-segments"><SegmentAmounts title="Água" projects={cityProjects.filter(p => p.segment_type === 'WATER')}/><SegmentAmounts title="Esgoto" projects={cityProjects.filter(p => p.segment_type === 'SEWER')}/></div>
+      return <article className="panel" key={city}><h2>{city}</h2><div className="engineering-city-segments"><SegmentAmounts title="Água" mode="water" projects={cityProjects.filter(p => p.segment_type === 'WATER')}/><SegmentAmounts title="Esgoto" mode="sewer" projects={cityProjects.filter(p => p.segment_type === 'SEWER')}/></div>
         {cityProjects.length > 0 && <details><summary>Ver projetos ({cityProjects.length})</summary>{Object.entries(segments).map(([segment, label]) => <section key={segment}><h3>{label}</h3>{cityProjects.filter(p => p.segment_type === segment).map(p => <div className="engineering-project" key={p.id}><h4>{p.project_name}</h4><span>{categories.find(c => c.code === p.project_category)?.label ?? p.project_category}</span>
           {p.project_category === 'WATER_LINEAR' && p.project_type === 'PE' ? <dl><div><dt>Entrega</dt><dd>{p.current?.delivery_status ? deliveryLabels[p.current.delivery_status] : 'Aguardando atualização'}</dd></div><div><dt>Economias</dt><dd>{format(p.current?.approved_economies ?? null)}</dd></div><div><dt>PEAD DE63</dt><dd>{format(p.current?.pead_de63_length_m == null ? null : Number(p.current.pead_de63_length_m), true)}</dd></div><div><dt>PEAD DE110</dt><dd>{format(p.current?.pead_de110_length_m == null ? null : Number(p.current.pead_de110_length_m), true)}</dd></div></dl>
             : <dl><div><dt>Concepção</dt><dd>{p.current?.concept_status ? conceptLabels[p.current.concept_status] : 'Não informada'}</dd></div><div><dt>Executivo</dt><dd>{p.current?.executive_status ? executiveLabels[p.current.executive_status] : 'Não informado'}</dd></div><div><dt>Economias</dt><dd>{format(p.current?.approved_economies ?? null)}</dd></div><div><dt>Metragem</dt><dd>{format(p.current?.approved_length_m == null ? null : Number(p.current.approved_length_m), true)}</dd></div></dl>}
