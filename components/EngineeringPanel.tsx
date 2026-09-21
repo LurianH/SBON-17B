@@ -3,7 +3,7 @@
 import {useState} from 'react';
 import {useRouter} from 'next/navigation';
 import {createClient} from '@/lib/supabase/client';
-import {canWriteEngineering, conceptLabels, currentProjects, deliveryLabels, emptyFilters, executiveLabels, filterProjects,
+import {canWriteEngineering, conceptLabels, conventionalEngineeringProjects, currentProjects, deliveryLabels, emptyFilters, executiveLabels, filterProjects,
   municipalities, projectSchema, segments, summarizeEngineering, summarizeEngineeringDisplay, updateSchema,
   type Category, type CurrentProject, type EngineeringFilters, type Project, type Update} from '@/lib/engineering';
 import {EngineeringWaterLinearSection} from '@/components/EngineeringWaterLinearSection';
@@ -18,8 +18,11 @@ function Amount({metric, meters = false, emptyLabel}: {metric: {value: number | 
 }
 function StatusKpi({title, projects, executive = false}: {title: string; projects: CurrentProject[]; executive?: boolean}) {
   const summary = summarizeEngineering(projects), percent = executive ? summary.executivePercent : summary.conceptPercent;
-  return <article className="kpi"><span>{title}</span><strong>{percent === null ? 'Aguardando cadastro' : `${new Intl.NumberFormat('pt-BR', {maximumFractionDigits: 1}).format(percent)}%`}</strong>
-    {percent !== null && <><small>{executive ? summary.completed : summary.approved} de {summary.count} projetos ativos</small><progress max={100} value={percent} aria-label={title}/></>}</article>;
+  const hasStatus = projects.some(project => executive ? project.current?.executive_status != null : project.current?.concept_status != null);
+  const emptyMessage = !projects.length ? 'Sem projetos deste grupo no recorte atual.'
+    : !hasStatus ? `Sem dados de ${executive ? 'projeto executivo' : 'concepção'} para estes projetos.` : null;
+  return <article className="kpi"><span>{title}</span>{emptyMessage ? <p className="engineering-kpi-empty">{emptyMessage}</p> : <><strong>{new Intl.NumberFormat('pt-BR', {maximumFractionDigits: 1}).format(percent ?? 0)}%</strong>
+    <small>{executive ? summary.completed : summary.approved} de {summary.count} projetos ativos</small><progress max={100} value={percent ?? 0} aria-label={title}/></>}</article>;
 }
 function SegmentAmounts({projects, title, mode}: {projects: CurrentProject[]; title: string; mode: 'water' | 'sewer' | 'total'}) {
   const summary = summarizeEngineeringDisplay(projects);
@@ -40,12 +43,14 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
   const [editing, setEditing] = useState<CurrentProject | 'new' | null>(null);
   const [feedback, setFeedback] = useState('');
   const [director, setDirector] = useState(role === 'DIRETORIA');
-  const all = currentProjects(projects, updates), visible = filterProjects(all, filters);
+  const all = currentProjects(projects, updates);
+  const conventionalAll = conventionalEngineeringProjects(all), visible = filterProjects(conventionalAll, filters);
+  const linearAll = all.filter(p => p.segment_type === 'WATER' && p.project_category === 'WATER_LINEAR' && p.project_type === 'PE');
   const canEdit = canWriteEngineering(role) && Boolean(contractId) && !director;
   const filtered = Object.values(filters).some(Boolean);
   const general = visible.filter(p => p.project_category === 'GENERAL'), statics = visible.filter(p => p.project_category === 'STATIC');
-  const linearVisible = all.filter(p => p.project_type === 'PE' && p.project_category === 'WATER_LINEAR'
-    && (!filters.city || p.municipality === filters.city)
+  const linearVisible = linearAll.filter(p =>
+    (!filters.city || p.municipality === filters.city)
     && (!filters.segment || p.segment_type === filters.segment)
     && (!filters.category || p.project_category === filters.category));
   const fields: {key: keyof EngineeringFilters; label: string; options: [string, string][]}[] = [
@@ -55,26 +60,35 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
     {key: 'concept', label: 'Status da concepção', options: Object.entries(conceptLabels)},
     {key: 'executive', label: 'Status do executivo', options: Object.entries(executiveLabels)},
   ];
+  const sharedFields = fields.slice(0, 3), milestoneFields = fields.slice(3);
   return <div className="engineering">
-    <div className="engineering-toolbar"><p>Projetos aprovados e liberados pela engenharia</p><div>{role !== 'DIRETORIA' && <button onClick={() => {setDirector(!director); setEditing(null);}}>{director ? 'Sair do Modo Diretoria' : 'Modo Diretoria'}</button>}{canEdit && <button onClick={() => setEditing('new')}>Cadastrar projeto</button>}</div></div>
+    <div className="engineering-toolbar"><p>Acompanhamento dos projetos aprovados e liberados pela Engenharia</p><div>{role !== 'DIRETORIA' && <button onClick={() => {setDirector(!director); setEditing(null);}}>{director ? 'Sair do Modo Diretoria' : 'Modo Diretoria'}</button>}{canEdit && <button onClick={() => setEditing('new')}>Cadastrar projeto convencional</button>}</div></div>
     {notice && <p role="alert" className="engineering-notice">{notice}</p>}
     {feedback && <p role="status" className="engineering-notice">{feedback}</p>}
-    <section className="panel engineering-filters" aria-label="Filtros de engenharia">{fields.map(f => <label key={f.key}>{f.label}<select value={filters[f.key]} onChange={e => setFilters({...filters, [f.key]: e.target.value})}><option value="">Todos</option>{f.options.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>)}<button onClick={() => setFilters(emptyFilters)}>Limpar filtros</button></section>
-    {filtered && <p className="engineering-context">Indicadores e cidades refletem os filtros · {visible.length} projetos encontrados</p>}
-    {!notice && !all.length && <p className="engineering-notice">Aguardando cadastro</p>}
-    {!notice && all.length > 0 && !visible.length && <p role="status">Nenhum projeto corresponde aos filtros.</p>}
-    <section className="engineering-status" aria-label="Evolução dos projetos">
-      <StatusKpi title="Concepção aprovada – Sala de Guerra · Geral" projects={general}/>
-      <StatusKpi title="Projetos executivos finalizados · Geral" projects={general} executive/>
-      <StatusKpi title="Estática – Concepção aprovada Sala de Guerra" projects={statics}/>
-      <StatusKpi title="Estática – Projeto executivo" projects={statics} executive/>
+    <section className="panel engineering-filters" aria-labelledby="engineering-filters-title">
+      <div className="engineering-filter-intro"><h2 id="engineering-filters-title">Filtros compartilhados</h2><p>Cidade, segmento e categoria se aplicam às duas seções. Concepção e projeto executivo filtram somente os projetos convencionais.</p></div>
+      {sharedFields.map(f => <label key={f.key}>{f.label}<select value={filters[f.key]} onChange={e => setFilters({...filters, [f.key]: e.target.value})}><option value="">Todos</option>{f.options.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>)}
+      <button onClick={() => setFilters(emptyFilters)}>Limpar filtros</button>
     </section>
-    <section className="panel engineering-totals" aria-label="Consolidação de economias e metragem">
-      <SegmentAmounts title="Água" mode="water" projects={visible.filter(p => p.segment_type === 'WATER')}/><SegmentAmounts title="Esgoto" mode="sewer" projects={visible.filter(p => p.segment_type === 'SEWER')}/><SegmentAmounts title="Total" mode="total" projects={visible}/>
-    </section>
-    {!notice && <EngineeringWaterLinearSection projects={linearVisible} canEdit={canEdit} contractId={contractId} onSaved={() => setFeedback('Atualização de obra linear salva. Histórico preservado.')}/>}
-    {canEdit && editing && <EngineeringForm key={editing === 'new' ? 'new' : editing.id} project={editing === 'new' ? null : editing} categories={categories} contractId={contractId!} onClose={() => setEditing(null)} onSaved={() => {setEditing(null); setFeedback('Atualização salva. Histórico preservado.');}}/>}
-    <section className="engineering-cities" aria-label="Aprovações por cidade">{municipalities.filter(city => !filters.city || filters.city === city).map(city => {
+    {filtered && <p className="engineering-context">Após os filtros aplicáveis: {visible.length} projetos convencionais · {linearVisible.length} projetos de Água / Obras Lineares.</p>}
+    <section className="engineering-development" aria-labelledby="engineering-development-title">
+      <header className="engineering-section-heading"><div><span className="engineering-section-eyebrow">PROJETOS CONVENCIONAIS</span><h2 id="engineering-development-title">Projetos de Engenharia — Marcos de desenvolvimento</h2><p>Concepção, projeto executivo, estática e demais marcos convencionais. Obras Lineares de Água têm status e indicadores próprios na seção abaixo.</p></div></header>
+      <div className="engineering-milestone-filters"><div><h3>Filtros dos marcos convencionais</h3><p>Esses filtros não alteram o acompanhamento de Água / Obras Lineares.</p></div>{milestoneFields.map(f => <label key={f.key}>{f.label}<select value={filters[f.key]} onChange={e => setFilters({...filters, [f.key]: e.target.value})}><option value="">Todos</option>{f.options.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>)}</div>
+      {!notice && !visible.length && <p role="status" className="engineering-empty-state">{conventionalAll.length ? 'Nenhum projeto convencional corresponde aos filtros.' : 'Sem projetos convencionais cadastrados neste contrato.'}</p>}
+      <section className="engineering-milestones" aria-label="Indicadores dos marcos de desenvolvimento"><div className="engineering-subsection-heading"><h3>Indicadores dos marcos</h3><p>Os percentuais consideram somente projetos convencionais das categorias Geral e Estática.</p></div>
+        <div className="engineering-status">
+          <StatusKpi title="Concepção aprovada — Sala de Guerra — Geral" projects={general}/>
+          <StatusKpi title="Projetos Executivos Finalizados — Geral" projects={general} executive/>
+          <StatusKpi title="Estática — Concepção aprovada Sala de Guerra" projects={statics}/>
+          <StatusKpi title="Estática — Projeto Executivo" projects={statics} executive/>
+        </div>
+      </section>
+      <section className="panel engineering-totals" aria-label="Consolidação de economias e metragem dos projetos convencionais">
+        <div className="engineering-subsection-heading"><h3>Consolidação por sistema</h3><p>Valores dos projetos convencionais selecionados, separados de Água / Obras Lineares.</p></div>
+        <SegmentAmounts title="Água" mode="water" projects={visible.filter(p => p.segment_type === 'WATER')}/><SegmentAmounts title="Esgoto" mode="sewer" projects={visible.filter(p => p.segment_type === 'SEWER')}/><SegmentAmounts title="Total" mode="total" projects={visible}/>
+      </section>
+      <section className="engineering-city-section" aria-labelledby="engineering-city-title"><div className="engineering-subsection-heading"><h3 id="engineering-city-title">Consolidação por município</h3><p>Água e Esgoto dos projetos convencionais, filtrados pelos mesmos critérios.</p></div>
+        <div className="engineering-cities">{municipalities.filter(city => !filters.city || filters.city === city).map(city => {
       const cityProjects = visible.filter(p => p.municipality === city);
       return <article className="panel" key={city}><h2>{city}</h2><div className="engineering-city-segments"><SegmentAmounts title="Água" mode="water" projects={cityProjects.filter(p => p.segment_type === 'WATER')}/><SegmentAmounts title="Esgoto" mode="sewer" projects={cityProjects.filter(p => p.segment_type === 'SEWER')}/></div>
         {cityProjects.length > 0 && <details><summary>Ver projetos ({cityProjects.length})</summary>{Object.entries(segments).map(([segment, label]) => <section key={segment}><h3>{label}</h3>{cityProjects.filter(p => p.segment_type === segment).map(p => <div className="engineering-project" key={p.id}><h4>{p.project_name}</h4><span>{categories.find(c => c.code === p.project_category)?.label ?? p.project_category}</span>
@@ -84,7 +98,11 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
           {!director && <History projectId={p.id} linear={p.project_category === 'WATER_LINEAR' && p.project_type === 'PE'} />}{canEdit && !(p.project_category === 'WATER_LINEAR' && p.project_type === 'PE') && <button onClick={() => {setEditing(p); requestAnimationFrame(() => document.getElementById('engineering-form')?.scrollIntoView({behavior: 'smooth'}));}}>Atualizar projeto</button>}
         </div>)}</section>)}</details>}
       </article>;
-    })}</section>
+        })}</div>
+      </section>
+      {canEdit && editing && <EngineeringForm key={editing === 'new' ? 'new' : editing.id} project={editing === 'new' ? null : editing} categories={categories} contractId={contractId!} onClose={() => setEditing(null)} onSaved={() => {setEditing(null); setFeedback('Atualização salva. Histórico preservado.');}}/>}
+    </section>
+    {!notice && <EngineeringWaterLinearSection projects={linearVisible} canEdit={canEdit} contractId={contractId} onSaved={() => setFeedback('Atualização de obra linear salva. Histórico preservado.')}/>}
   </div>;
 }
 

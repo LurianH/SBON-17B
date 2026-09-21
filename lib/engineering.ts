@@ -90,6 +90,10 @@ export function currentProjects(projects: Project[], updates: Update[]): Current
   return projects.filter(p => p.active).map(p => ({...p, current: latest.get(p.id) ?? null}));
 }
 
+export function conventionalEngineeringProjects(projects: CurrentProject[]) {
+  return projects.filter(project => project.project_category !== 'WATER_LINEAR');
+}
+
 export function summarizeEngineering(projects: CurrentProject[]) {
   const values = (field: 'approved_economies' | 'approved_length_m') => {
     const known = projects.map(p => p.current?.[field]).filter(v => v !== null && v !== undefined);

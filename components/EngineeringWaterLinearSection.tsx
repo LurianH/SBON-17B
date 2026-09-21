@@ -8,11 +8,12 @@ import {canWriteEngineering, deliveryLabels, municipalities, sumWaterLinearLengt
 import {summarizeWaterLinear} from '@/lib/engineering-water-linear';
 
 const day = (value: string) => new Intl.DateTimeFormat('pt-BR').format(new Date(value + 'T12:00:00'));
+const instant = (value: string) => new Intl.DateTimeFormat('pt-BR', {dateStyle: 'short', timeStyle: 'short'}).format(new Date(value));
 const localDate = () => {const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;};
 const numeric = (value: number, fractionDigits = 3) => new Intl.NumberFormat('pt-BR', {maximumFractionDigits: fractionDigits}).format(value);
 const metricValue = (value: number | null, unit: 'economies' | 'meters' | 'km') => value === null
   ? 'Aguardando atualização'
-  : unit === 'km' ? `${numeric(value / 1000, 3)} km` : numeric(value, unit === 'meters' ? 3 : 0) + (unit === 'meters' ? ' m' : '');
+  : unit === 'km' ? `${numeric(value / 1000, 2)} km` : numeric(value, unit === 'meters' ? 2 : 0) + (unit === 'meters' ? ' m' : '');
 
 function Metric({value, partial, unit}: {value: number | null; partial: boolean; unit: 'economies' | 'meters' | 'km'}) {
   return <><strong>{metricValue(value, unit)}</strong>{partial && value !== null && <small>Parcial · há registros sem esse valor</small>}</>;
@@ -25,6 +26,9 @@ export function EngineeringWaterLinearSection({projects, canEdit, contractId, on
   const summary = summarizeWaterLinear(projects);
   const rows = [...summary.rows].sort((a, b) => a.municipality.localeCompare(b.municipality, 'pt-BR')
     || a.project_name.localeCompare(b.project_name, 'pt-BR'));
+  const cityOrder = ['Porangaba', 'Quadra', 'Tatuí', 'Conchas'];
+  const cityRank = (city: string) => {const rank = cityOrder.indexOf(city); return rank === -1 ? cityOrder.length : rank;};
+  const cities = [...summary.municipalities].sort((a, b) => cityRank(a.municipality) - cityRank(b.municipality));
   const canCreate = canEdit && Boolean(contractId);
   const openForm = (project: CurrentProject | 'new') => {
     setEditing(project);
@@ -34,69 +38,66 @@ export function EngineeringWaterLinearSection({projects, canEdit, contractId, on
   return <section className="panel water-linear" aria-labelledby="water-linear-title">
     <header className="water-linear-heading">
       <div><span className="water-linear-eyebrow">ACOMPANHAMENTO DE ENTREGAS</span><h2 id="water-linear-title">Projetos de Água — Obras Lineares</h2>
-        <p>Áreas de projeto, economias e rede por diâmetro, com status de entrega independente das aprovações de Engenharia.</p></div>
+        <p>Áreas, economias aprovadas e extensão da rede. O status acompanha a entrega da obra. O tipo PE identifica o registro linear e não representa os marcos de concepção ou executivo da seção convencional.</p></div>
       {canCreate && <button onClick={() => openForm('new')}>Cadastrar projeto de Água</button>}
     </header>
 
+    {!summary.projects ? <p role="status" className="water-linear-empty">Nenhum projeto de Água / Obras Lineares corresponde aos filtros compartilhados.</p> : <>
     <div className="water-linear-kpis">
       <article><span>Projetos de Água</span><strong>{summary.projects}</strong><small>áreas ativas</small></article>
       <article><span>Economias aprovadas</span><Metric {...summary.economies} unit="economies"/></article>
-      <article><span>Rede projetada</span><Metric {...summary.networkM} unit="km"/></article>
+      <article><span>Extensão total da rede</span><Metric {...summary.networkM} unit="km"/></article>
       <article><span>Projetos finalizados</span><strong>{summary.completed} / {summary.projects}</strong>
         <small>{summary.completedPercent === null ? 'Sem projetos cadastrados' : `${numeric(summary.completedPercent, 1)}% do total`}</small>
         {summary.completedPercent !== null && <progress max={100} value={summary.completedPercent} aria-label="Percentual de projetos finalizados"/>}
       </article>
     </div>
 
-    <div className="water-linear-statuses" aria-label="Resumo por status">
+    <section className="water-linear-status-section" aria-labelledby="water-linear-status-title"><h3 id="water-linear-status-title">Resumo de entregas por status</h3><div className="water-linear-statuses">
       {summary.statuses.map(status => <article key={status.status} data-status={status.status}>
         <span>{status.label}</span><strong>{status.projects} {status.projects === 1 ? 'projeto' : 'projetos'}</strong>
-        <small><Metric {...status.economies} unit="economies"/> · <Metric {...status.networkM} unit="km"/></small>
       </article>)}
       {summary.withoutStatus > 0 && <p role="status">{summary.withoutStatus} projeto(s) sem snapshot de status.</p>}
-    </div>
-
-    {editing && canCreate && <WaterLinearForm key={editing === 'new' ? 'new' : editing.id}
-      project={editing === 'new' ? null : editing} contractId={contractId!}
-      onClose={() => setEditing(null)} onSaved={() => {setEditing(null); onSaved();}}/>}
+    </div></section>
 
     <section className="water-linear-municipalities" aria-labelledby="water-linear-cities-title">
       <h3 id="water-linear-cities-title">Visão por município</h3>
-      {!summary.municipalities.length ? <p>Nenhum projeto de Água / Obras Lineares cadastrado.</p>
-        : <div className="water-linear-city-grid">{summary.municipalities.map(city => <article key={city.municipality}>
+        <div className="water-linear-city-grid">{cities.map(city => <article key={city.municipality}>
           <h4>{city.municipality}</h4><dl>
             <div><dt>Projetos</dt><dd>{city.projects}</dd></div>
             <div><dt>Economias</dt><dd>{metricValue(city.economies.value, 'economies')}</dd></div>
-            <div><dt>Rede total</dt><dd>{metricValue(city.networkM.value, 'km')}</dd></div>
-            <div><dt>Rede finalizada</dt><dd>{metricValue(city.completedNetworkM.value, 'km')}</dd></div>
-            <div><dt>Rede em andamento</dt><dd>{metricValue(city.inProgressNetworkM.value, 'km')}</dd></div>
+            <div><dt>Extensão total</dt><dd>{metricValue(city.networkM.value, 'meters')}</dd></div>
           </dl>
           {(city.networkM.partial || city.economies.partial) && <small>Totais parciais: há valores sem atualização.</small>}
-        </article>)}</div>}
+        </article>)}</div>
     </section>
 
     <section className="water-linear-table-section" aria-labelledby="water-linear-table-title">
       <div className="water-linear-table-title"><h3 id="water-linear-table-title">Detalhamento por área / projeto</h3><span>{rows.length} registros</span></div>
-      <div className="water-linear-table-wrap"><table>
+      <div className="water-linear-table-wrap" role="region" aria-label="Tabela detalhada de projetos de Água / Obras Lineares" tabIndex={0}><table>
         <caption>Projetos de Água / Obras Lineares, com extensões armazenadas em metros.</caption>
         <thead><tr><th scope="col">Cidade</th><th scope="col">Projeto / Área</th><th scope="col">Tipo</th><th scope="col">Status</th>
           <th scope="col">Economias</th><th scope="col">PEAD DE63</th><th scope="col">PEAD DE110</th><th scope="col">Extensão total</th><th scope="col">Última atualização</th><th scope="col"><span className="sr-only">Ações</span></th></tr></thead>
         <tbody>{rows.map(project => {
           const update = project.current;
           return <tr key={project.id}>
-            <td>{project.municipality}</td><td>{project.project_name}</td><td>{project.project_type ?? '—'}</td>
+            <td>{project.municipality}</td><td>{project.project_name}</td><td>{project.project_type === 'PE' ? 'PE · Obra linear' : project.project_type ?? '—'}</td>
             <td><span className={`water-linear-badge ${update?.delivery_status ?? 'UNKNOWN'}`}>{update?.delivery_status ? deliveryLabels[update.delivery_status] : 'Sem status'}</span></td>
             <td>{update?.approved_economies == null ? 'Aguardando atualização' : numeric(update.approved_economies, 0)}</td>
             <td>{update?.pead_de63_length_m == null ? 'Aguardando atualização' : `${numeric(Number(update.pead_de63_length_m))} m`}</td>
             <td>{update?.pead_de110_length_m == null ? 'Aguardando atualização' : `${numeric(Number(update.pead_de110_length_m))} m`}</td>
             <td>{update?.approved_length_m == null ? 'Aguardando atualização' : `${numeric(Number(update.approved_length_m))} m`}</td>
-            <td>{update ? <><time dateTime={update.reference_date}>{day(update.reference_date)}</time>
-              <small title={`Responsável: ${update.created_by}`}>por {update.created_by.slice(0, 8)}</small></> : '—'}</td>
+            <td>{update ? <><time dateTime={update.created_at}>{instant(update.created_at)}</time>
+              <small title={`Responsável: ${update.created_by}`}>Referência: {day(update.reference_date)} · por {update.created_by.slice(0, 8)}</small></> : '—'}</td>
             <td>{canCreate && <button className="water-linear-edit" onClick={() => openForm(project)} aria-label={`Atualizar ${project.project_name}`}>Atualizar</button>}</td>
           </tr>;
         })}</tbody>
       </table></div>
     </section>
+    </>}
+    {editing && canCreate && <WaterLinearForm key={editing === 'new' ? 'new' : editing.id}
+      project={editing === 'new' ? null : editing} contractId={contractId!}
+      onClose={() => setEditing(null)} onSaved={() => {setEditing(null); onSaved();}}/>}
   </section>;
 }
 
@@ -147,7 +148,7 @@ function WaterLinearForm({project, contractId, onClose, onSaved}: {
     <form action={submit} className="water-linear-edit-form"><fieldset disabled={busy}><div className="water-linear-fields">
       {!project && <><label>Cidade<select name="municipality" required defaultValue=""><option value="" disabled>Selecione</option>{municipalities.map(city => <option key={city} value={city}>{city}</option>)}</select></label>
         <label>Projeto / Área<input name="project_name" maxLength={200} required/></label></>}
-      {project && <p>{project.municipality} · PE · Água</p>}
+      {project && <p>{project.municipality} · Projeto linear de Água · Tipo PE</p>}
       <label>Data da atualização<input type="date" value={referenceDate} onChange={event => setReferenceDate(event.target.value)} required/></label>
       <label>Status da entrega<select value={status} onChange={event => setStatus(event.target.value as DeliveryStatus)}>
         {Object.entries(deliveryLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}

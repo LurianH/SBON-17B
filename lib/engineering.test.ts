@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {canReadEngineering, canWriteEngineering, currentProjects, emptyFilters, filterProjects, projectSchema, summarizeEngineering, summarizeEngineeringDisplay, updateSchema, type Project, type Update} from './engineering';
+import {canReadEngineering, canWriteEngineering, conventionalEngineeringProjects, currentProjects, emptyFilters, filterProjects, projectSchema, summarizeEngineering, summarizeEngineeringDisplay, updateSchema, type Project, type Update} from './engineering';
 import {canAccessRoute, type AppRole} from './authorization';
 
 const project = (id: string, extra: Partial<Project> = {}): Project => ({id, contract_id: 'contract', municipality: 'Tatuí', segment_type: 'WATER', project_category: 'GENERAL', project_name: id, project_type: null, active: true, ...extra});
@@ -10,6 +10,7 @@ const current = currentProjects(projects, updates);
 describe('Consolidação de Engenharia', () => {
   it('soma economias WATER e metragem com precisão', () => {const s = summarizeEngineering(current.filter(p => p.segment_type === 'WATER')); expect(s.economies.value).toBe(50); expect(s.length.value).toBe(.3);});
   it('soma economias SEWER e metragem', () => {const s = summarizeEngineering(current.filter(p => p.segment_type === 'SEWER')); expect(s.economies.value).toBe(20); expect(s.length.value).toBe(30.125);});
+  it('mantém WATER_LINEAR fora dos marcos convencionais', () => {const linear = currentProjects([project('linear', {project_category: 'WATER_LINEAR', project_type: 'PE'})], [update('linear', {concept_status: 'APPROVED', concept_approved_at: '2026-09-11', executive_status: 'COMPLETED', executive_completed_at: '2026-09-11'})]); expect(conventionalEngineeringProjects([...current, ...linear]).map(p => p.id)).toEqual(['a', 'b', 'c']);});
   it('mostra economias somente da Água e metragem combinada no Total', () => {const s = summarizeEngineeringDisplay(current.slice(0, 2)); expect(s.water.economies.value).toBe(10); expect(s.water.length.value).toBe(.1); expect(s.sewer).toEqual({count: 1, length: {value: 30.125, partial: false}}); expect(s.total.economies.value).toBe(10); expect(s.total.length.value).toBe(30.225);});
   it('distingue Esgoto sem Água e escopos sem projetos', () => {const sewerOnly = summarizeEngineeringDisplay(current.filter(p => p.segment_type === 'SEWER')); expect(sewerOnly.total.waterCount).toBe(0); expect(sewerOnly.total.economies).toEqual({value: null, partial: false}); expect(sewerOnly.total.length.value).toBe(30.125); const empty = summarizeEngineeringDisplay([]); expect(empty.water.count).toBe(0); expect(empty.sewer.count).toBe(0); expect(empty.total.count).toBe(0);});
   it('consolida por cidade', () => {expect(summarizeEngineering(filterProjects(current, {...emptyFilters, city: 'Tatuí'})).economies.value).toBe(30);});
