@@ -1,0 +1,20 @@
+{
+  "source_file": "Quadro_Resumo_Obras_de_Agua REV01.xlsx",
+  "source_updated_at": "2026-09-18",
+  "contract_code": "SBON 17B",
+  "records": [
+    {"municipality":"Porangaba","project_name":"Booster São João","segment_type":"WATER","project_category":"WATER_LINEAR","project_type":"PE","delivery_status":"COMPLETED","reference_date":"2026-09-18","approved_economies":51,"pead_de63_length_m":"3807.010","pead_de110_length_m":"0.000","notes":null},
+    {"municipality":"Porangaba","project_name":"Vicente","segment_type":"WATER","project_category":"WATER_LINEAR","project_type":"PE","delivery_status":"COMPLETED","reference_date":"2026-09-18","approved_economies":3,"pead_de63_length_m":"610.600","pead_de110_length_m":"0.000","notes":null},
+    {"municipality":"Porangaba","project_name":"Garças","segment_type":"WATER","project_category":"WATER_LINEAR","project_type":"PE","delivery_status":"COMPLETED","reference_date":"2026-09-18","approved_economies":32,"pead_de63_length_m":"1185.080","pead_de110_length_m":"0.000","notes":null},
+    {"municipality":"Porangaba","project_name":"Dos Lopes","segment_type":"WATER","project_category":"WATER_LINEAR","project_type":"PE","delivery_status":"COMPLETED","reference_date":"2026-09-18","approved_economies":25,"pead_de63_length_m":"1086.660","pead_de110_length_m":"0.000","notes":null},
+    {"municipality":"Porangaba","project_name":"KM 192","segment_type":"WATER","project_category":"WATER_LINEAR","project_type":"PE","delivery_status":"IN_PROGRESS","reference_date":"2026-09-18","approved_economies":52,"pead_de63_length_m":"1049.000","pead_de110_length_m":"500.000","notes":null},
+    {"municipality":"Quadra","project_name":"Estância","segment_type":"WATER","project_category":"WATER_LINEAR","project_type":"PE","delivery_status":"COMPLETED","reference_date":"2026-09-18","approved_economies":33,"pead_de63_length_m":"3227.870","pead_de110_length_m":"0.000","notes":null},
+    {"municipality":"Quadra","project_name":"Cruz de Cedro","segment_type":"WATER","project_category":"WATER_LINEAR","project_type":"PE","delivery_status":"COMPLETED","reference_date":"2026-09-18","approved_economies":11,"pead_de63_length_m":"1827.320","pead_de110_length_m":"0.000","notes":null},
+    {"municipality":"Porangaba","project_name":"Booster Alto da Serra","segment_type":"WATER","project_category":"WATER_LINEAR","project_type":"PE","delivery_status":"IN_PROGRESS","reference_date":"2026-09-18","approved_economies":18,"pead_de63_length_m":"693.000","pead_de110_length_m":"0.000","notes":null},
+    {"municipality":"Porangaba","project_name":"Booster Vidas Novas","segment_type":"WATER","project_category":"WATER_LINEAR","project_type":"PE","delivery_status":"IN_PROGRESS","reference_date":"2026-09-18","approved_economies":132,"pead_de63_length_m":"4465.200","pead_de110_length_m":"2364.600","notes":null},
+    {"municipality":"Tatuí","project_name":"Mirandas (687_AF_207)","segment_type":"WATER","project_category":"WATER_LINEAR","project_type":"PE","delivery_status":"NOT_STARTED","reference_date":"2026-09-18","approved_economies":5,"pead_de63_length_m":"990.000","pead_de110_length_m":"0.000","notes":null},
+    {"municipality":"Tatuí","project_name":"Mirandas (687_AF_390)","segment_type":"WATER","project_category":"WATER_LINEAR","project_type":"PE","delivery_status":"NOT_STARTED","reference_date":"2026-09-18","approved_economies":7,"pead_de63_length_m":"463.000","pead_de110_length_m":"0.000","notes":null},
+    {"municipality":"Conchas","project_name":"Estrada CH 12,5","segment_type":"WATER","project_category":"WATER_LINEAR","project_type":"PE","delivery_status":"IN_PROGRESS","reference_date":"2026-09-18","approved_economies":13,"pead_de63_length_m":"1152.000","pead_de110_length_m":"0.000","notes":null},
+    {"municipality":"Conchas","project_name":"Aflitos","segment_type":"WATER","project_category":"WATER_LINEAR","project_type":"PE","delivery_status":"IN_PROGRESS","reference_date":"2026-09-18","approved_economies":17,"pead_de63_length_m":"0.000","pead_de110_length_m":"2487.000","notes":null}
+  ]
+}

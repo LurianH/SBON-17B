@@ -21,8 +21,8 @@ vi.mock('./supabase/client', () => ({createClient: () => ({from(table: string) {
     },
   }; return q;
 }})}));
-const project = (id: string, segment_type: 'WATER' | 'SEWER' = 'WATER', active = true): Project => ({id, segment_type, active, contract_id: 'c', municipality: 'Tatuí', project_category: 'GENERAL', project_name: id});
-const update = (id: string, economies: number | null, length: number | null, date = '2026-09-14'): Update => ({id: id + date, engineering_project_id: id, reference_date: date, approved_economies: economies, approved_length_m: length, concept_status: 'PENDING', concept_approved_at: null, executive_status: 'PENDING', executive_completed_at: null, notes: null, created_at: date + 'T12:00:00Z', created_by: 'u'});
+const project = (id: string, segment_type: 'WATER' | 'SEWER' = 'WATER', active = true): Project => ({id, segment_type, active, contract_id: 'c', municipality: 'Tatuí', project_category: 'GENERAL', project_name: id, project_type: null});
+const update = (id: string, economies: number | null, length: number | null, date = '2026-09-14'): Update => ({id: id + date, engineering_project_id: id, reference_date: date, approved_economies: economies, approved_length_m: length, concept_status: 'PENDING', concept_approved_at: null, executive_status: 'PENDING', executive_completed_at: null, delivery_status: null, pead_de63_length_m: null, pead_de110_length_m: null, notes: null, created_at: date + 'T12:00:00Z', created_by: 'u'});
 beforeEach(() => {
   mock.calls = []; mock.error = '';
   mock.tables = {
