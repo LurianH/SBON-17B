@@ -9,7 +9,7 @@ import {LOCALIZED_DATABASE_ENABLED, saveNewLocalizedWork, saveLocalizedWorkUpdat
 type Kind = 'RESERVOIR'|'BOOSTER'|'EEE';
 type Status = 'NOT_STARTED'|'IN_PROGRESS'|'COMPLETED';
 type Budget = 'NOT_BUDGETED'|'IN_PREPARATION'|'BUDGETED'|'UNDER_REVIEW'|'APPROVED';
-type RecordWork = {id:string; name:string; city:string; stain:string; kind:Kind; units:string; capacity:string; material:string; power:string; flow:string; hmt:string; hydraulic:Status; electrical:Status; structural:Status; budget:Budget; contractualCode:string; notes:string};
+type RecordWork = {id:string; name:string; city:string; stain:string; kind:Kind; units:string; capacity:string; material:string; power:string; flow:string; hmt:string; hydraulic:Status; electrical:Status; structural:Status; budget:Budget; contractualCode:string; notes:string; planRowKey?:string};
 const cities = ['Porangaba','Quadra','Tatuí','Conchas','Pereiras'];
 const kindLabels:Record<Kind,string> = {RESERVOIR:'Reservatório',BOOSTER:'Booster',EEE:'EEE'};
 const statusLabels:Record<Status,string> = {NOT_STARTED:'Não iniciado',IN_PROGRESS:'Em andamento',COMPLETED:'Finalizado'};
@@ -56,7 +56,7 @@ export function LocalizedWorksEngineering(){
  },[rows,hydrated]);
  const visible=rows.filter(r=>filter==='ALL'||r.kind===filter);
  const planOptions=editing ? attackPlan2026.filter(r=>r.municipality===editing.city && (editing.kind==='EEE'?r.segment==='SEWER':r.segment==='WATER')) : [];
- const selectedPlan=planOptions.find(r=>r.stainId===editing?.stain);
+ const selectedPlan=planOptions.find(r=>r.rowKey===editing?.planRowKey) ?? (editing?.planRowKey ? undefined : (planOptions.filter(r=>r.stainId===editing?.stain).length===1 ? planOptions.find(r=>r.stainId===editing?.stain) : undefined));
  const sameIdOptions=selectedPlan ? planOptions.filter(r=>r.stainId===selectedPlan.stainId) : [];
 
  function exportBackup(){
@@ -99,13 +99,13 @@ export function LocalizedWorksEngineering(){
  async function submit(e:React.FormEvent<HTMLFormElement>){
   e.preventDefault();if(!editing)return;
   if(!editing.name.trim()||!editing.stain.trim()){setMessage('Informe a obra e selecione uma mancha do Plano de Ataque.');return;}
-  if(!planOptions.some(r=>r.stainId===editing.stain)){setMessage('A mancha não corresponde ao município e ao sistema desta estrutura.');return;}
-  if(sameIdOptions.length>1){setMessage('Este ID aparece em mais de uma frente; aguarde a confirmação do vínculo antes de cadastrar.');return;}
+  if(!selectedPlan){setMessage('A mancha não corresponde ao município e ao sistema desta estrutura.');return;}
+  if(sameIdOptions.length>1&&!editing.planRowKey){setMessage('Este ID aparece em mais de uma frente; aguarde a confirmação do vínculo antes de cadastrar.');return;}
   if(!/^\d+$/.test(editing.units)||Number(editing.units)<1){setMessage('Quantidade deve ser um inteiro maior que zero.');return;}
   for(const k of ['capacity','power','flow','hmt'] as const){if(!validNonnegative(editing[k])){setMessage('Revise os valores técnicos: somente números não negativos.');return;}}
   if(editing.kind==='RESERVOIR'&&!editing.capacity.trim()){setMessage('Informe a capacidade do reservatório em m³ ou aguarde sua definição antes do cadastro.');return;}
   // Same validation boundary that will later guard persisted updates.
-  const selected=planOptions.find(r=>r.stainId===editing.stain);
+  const selected=selectedPlan;
   if(!selected){setMessage('Selecione uma frente cadastrada no Plano de Ataque.');return;}
   const optionalNumber=(v:string)=>v.trim()===''?null:Number(v);
   try {
@@ -154,11 +154,11 @@ export function LocalizedWorksEngineering(){
   <div className="localized-table-wrap"><table className="localized-table"><thead><tr><th>Obra / estrutura</th><th>Município</th><th>Mancha</th><th>Tipo</th><th>Quant.</th><th>Dados técnicos</th><th>Orçamento</th><th>Ação</th></tr></thead><tbody>{visible.map(r=><tr key={r.id}><td>{r.name}</td><td>{r.city}</td><td>{r.stain||'A informar'}</td><td>{kindLabels[r.kind]}</td><td>{r.units}</td><td>{r.kind==='RESERVOIR'?(r.capacity?`${r.capacity} m³`:'Capacidade pendente'):`${r.power?`${r.power} CV · `:''}${r.flow?`${r.flow} L/s · `:''}${r.hmt?`${r.hmt} mca`:'Dados pendentes'}`}</td><td>{budgetLabels[r.budget]}</td><td><button type="button" onClick={()=>{setEditing({...r});setMessage('');}}>Editar</button></td></tr>)}</tbody></table></div>
   {editing&&<form onSubmit={submit} className="localized-preview-form"><h3>{editing.id?'Revisar estrutura':'Cadastrar estrutura'} · prévia sem gravação</h3><div className="localized-preview-fields">
    <label>Obra / estrutura<input required maxLength={150} value={editing.name} onChange={e=>update('name',e.target.value)}/></label>
-   <label>Município<select value={editing.city} onChange={e=>setEditing(old=>old?{...old,city:e.target.value,stain:''}:old)}>{cities.map(c=><option key={c}>{c}</option>)}</select></label>
-   <label>ID da mancha — Plano de Ataque 2026<select required value={editing.stain} onChange={e=>update('stain',e.target.value)}>
-    <option value="">Selecione a frente</option>{planOptions.map(r=><option key={r.rowKey} value={r.stainId}>{r.stainId} · {r.front}</option>)}
+   <label>Município<select value={editing.city} onChange={e=>setEditing(old=>old?{...old,city:e.target.value,stain:'',planRowKey:''}:old)}>{cities.map(c=><option key={c}>{c}</option>)}</select></label>
+   <label>ID da mancha — Plano de Ataque 2026<select required value={selectedPlan?.rowKey??''} onChange={e=>setEditing(old=>{const plan=planOptions.find(r=>r.rowKey===e.target.value);return old?{...old,stain:plan?.stainId??'',planRowKey:plan?.rowKey??''}:old;})}>
+    <option value="">Selecione a frente</option>{planOptions.map(r=><option key={r.rowKey} value={r.rowKey}>{r.stainId} · {r.front}</option>)}
    </select></label>
-   <label>Tipo<select value={editing.kind} onChange={e=>setEditing(old=>old?{...old,kind:e.target.value as Kind,stain:''}:old)}>{Object.entries(kindLabels).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label>
+   <label>Tipo<select value={editing.kind} onChange={e=>setEditing(old=>old?{...old,kind:e.target.value as Kind,stain:'',planRowKey:''}:old)}>{Object.entries(kindLabels).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label>
    {sameIdOptions.length>1&&<p className="localized-warning localized-wide">Atenção: o ID {editing.stain} consta em {sameIdOptions.length} frentes. Confirme o vínculo antes de registrar.</p>}
    <label>Quantidade<input type="number" min="1" step="1" required value={editing.units} onChange={e=>update('units',e.target.value)}/></label>
    {editing.kind==='RESERVOIR'?<><label>Capacidade (m³)<input type="number" min="0" step="any" value={editing.capacity} onChange={e=>update('capacity',e.target.value)}/></label><label>Material<input maxLength={80} value={editing.material} onChange={e=>update('material',e.target.value)} placeholder="PRFV, concreto..."/></label></>:<><label>Potência (CV)<input type="number" min="0" step="any" value={editing.power} onChange={e=>update('power',e.target.value)}/></label><label>Vazão (L/s)<input type="number" min="0" step="any" value={editing.flow} onChange={e=>update('flow',e.target.value)}/></label><label>HMT (mca)<input type="number" min="0" step="any" value={editing.hmt} onChange={e=>update('hmt',e.target.value)}/></label></>}
