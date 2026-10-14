@@ -1,23 +1,11 @@
-# SBON 17B — Implantação controlada (sem executar ainda)
+# SBON 17B — implantação controlada
 
-Esta proposta substitui as migrations de rascunho das fases 6, 8 e 16; nunca executá-las juntas.
+A implementação final e o roteiro de liberação estão em [PUBLICACAO_SBON17B.md](PUBLICACAO_SBON17B.md). Este documento substitui as instruções de pacotes/ZIPs anteriores.
 
-O modelo passa a ter **três novas tabelas**, sem alterar `engineering_projects`, `engineering_project_updates` ou `contracts`:
+Aplicar somente a migration consolidada `20261014170959_localized_works_permanent_history.sql`, depois de conferir o schema real e receber autorização explícita. Ela cria três tabelas de obras localizadas, funções, triggers, índices, RLS e a view de estado atual. Nenhuma tabela, policy ou linha existente do painel Vitalux/Engenharia é alterada pela migration.
 
-1. `engineering_attack_plan_2026`: 16 frentes, cada uma com `row_key` único; mantém o código duplicado de Conchas em duas linhas distintas.
-2. `engineering_localized_works`: cadastro de estrutura com FK à frente e ao projeto real da Engenharia.
-3. `engineering_localized_work_updates`: histórico imutável por inserção, com situação dos projetos e características técnicas.
+A frente do Plano de Ataque é obrigatória. O vínculo a um projeto real da Engenharia é opcional, como previsto no último SQL em revisão; quando informado, contrato, município, sistema e atividade devem coincidir. Essa opção permite cadastrar a estrutura da frente sem inventar ou inserir um projeto na Engenharia. A interface oferece projetos compatíveis para associação explícita.
 
-## Bloqueios antes da aplicação
+Somente ADMIN/EDITOR ativos gravam. GESTOR/DIRETORIA ativos consultam cadastro e histórico na Engenharia. As permissões originais da rota `/historico` e de `audit_logs` continuam intactas.
 
-- O projeto de Engenharia (`engineering_project_id`) deve existir **no mesmo município e sistema** da frente, e no contrato SBON 17B. Algumas frentes do plano ainda não têm esse projeto; não inventar UUIDs.
-- Conferir a estrutura das policies e grants, que não estão totalmente visíveis nas capturas anteriores.
-- Obter backup do banco, autorização explícita e confirmar que as tabelas ainda não existem.
-- Aplicar no Supabase apenas depois de revisar o SQL; usar uma única transação.
-- A interface atual **ainda não salva remotamente**. Precisará integrar os registros canônicos e as operações na camada de dados depois da migração.
-- Proposta sem implantação real executada nem teste contra o servidor Supabase. Não considerar pronta para publicar.
-
-**Instalação no Codespaces, apenas para revisão**:
-`unzip -o SBON17B_IMPLANTACAO_CONTROLADA.zip`
-
-Não contratar branch paga. Banco de produção permanece inalterado enquanto não autorizado.
+Não criar infraestrutura paga, novas prévias nem aplicar migration/publicar sem autorização. O deploy automático da branch de trabalho está desabilitado no `vercel.json`; a configuração da branch principal e os recursos remotos existentes não foram modificados.

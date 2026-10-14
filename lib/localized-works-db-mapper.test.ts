@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {attackPlan2026} from './attack-plan-2026';
-import {prepareLocalizedWorkForDatabase,commitLocalizedWorkToDatabase,localizedWorkDbWritesEnabled} from './localized-works-db-mapper';
+import {prepareLocalizedWorkForDatabase} from './localized-works-db-mapper';
 const uuidA='11111111-1111-4111-8111-111111111111';
 const uuidB='22222222-2222-4222-8222-222222222222';
 const water=attackPlan2026.find(r=>r.segment==='WATER')!;
@@ -18,5 +18,4 @@ describe('camada DB sem escrita',()=>{
  it('bloqueia cidade divergente',()=>expect(()=>prepareLocalizedWorkForDatabase(input,{...link,projectMunicipality:'Conchas'})).toThrow('Município'));
  it('bloqueia sistema divergente',()=>expect(()=>prepareLocalizedWorkForDatabase(input,{...link,projectSegment:water.segment==='WATER'?'SEWER':'WATER'})).toThrow('Sistema'));
  it('bloqueia projeto inativo',()=>expect(()=>prepareLocalizedWorkForDatabase(input,{...link,projectActive:false})).toThrow('inativo'));
- it('nunca grava',async()=>{expect(localizedWorkDbWritesEnabled).toBe(false);await expect(commitLocalizedWorkToDatabase()).rejects.toThrow('bloqueada');});
 });

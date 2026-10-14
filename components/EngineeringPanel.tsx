@@ -8,6 +8,7 @@ import {canWriteEngineering, conceptLabels, currentProjects, deliveryLabels, emp
   municipalities, projectSchema, segments, summarizeEngineering, updateSchema,
   type Category, type CurrentProject, type EngineeringFilters, type Project, type Update} from '@/lib/engineering';
 import {EngineeringWaterLinearSection} from '@/components/EngineeringWaterLinearSection';
+import type {LocalizedWorkRow} from '@/lib/localized-works-model';
 
 const format = (v: number | null, meters = false) => v === null ? 'Aguardando atualização' : new Intl.NumberFormat('pt-BR', {maximumFractionDigits: 3}).format(v) + (meters ? ' m' : '');
 const day = (v: string) => new Intl.DateTimeFormat('pt-BR').format(new Date(v + 'T12:00:00'));
@@ -27,8 +28,9 @@ function SegmentAmounts({projects, title}: {projects: CurrentProject[]; title: s
   return <div className="engineering-segment"><h3>{title}</h3><span>Economias aprovadas</span><Amount metric={summary.economies}/><span>Metragem aprovada</span><Amount metric={summary.length} meters/></div>;
 }
 
-export function EngineeringPanel({projects, updates, categories, role, contractId, notice}: {
+export function EngineeringPanel({projects, updates, categories, role, contractId, notice, localizedWorks=[], localizedNotice=''}: {
   projects: Project[]; updates: Update[]; categories: Category[]; role: string | null; contractId: string | null; notice: string;
+  localizedWorks?: LocalizedWorkRow[]; localizedNotice?: string;
 }) {
   const [filters, setFilters] = useState<EngineeringFilters>(emptyFilters);
   const [editing, setEditing] = useState<CurrentProject | 'new' | null>(null);
@@ -67,7 +69,7 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
       <SegmentAmounts title="Água" projects={visible.filter(p => p.segment_type === 'WATER')}/><SegmentAmounts title="Esgoto" projects={visible.filter(p => p.segment_type === 'SEWER')}/><SegmentAmounts title="Total" projects={visible}/>
     </section>
     {!notice && <EngineeringWaterLinearSection projects={linearVisible} canEdit={canEdit} contractId={contractId} onSaved={() => setFeedback('Atualização de obra linear salva. Histórico preservado.')}/>}
-    <LocalizedWorksEngineering/>
+    <LocalizedWorksEngineering role={role} contractId={contractId} projects={projects} initialWorks={localizedWorks} notice={localizedNotice} readOnly={director}/>
     {canEdit && editing && <EngineeringForm key={editing === 'new' ? 'new' : editing.id} project={editing === 'new' ? null : editing} categories={categories} contractId={contractId!} onClose={() => setEditing(null)} onSaved={() => {setEditing(null); setFeedback('Atualização salva. Histórico preservado.');}}/>}
     <section className="engineering-cities" aria-label="Aprovações por cidade">{municipalities.filter(city => !filters.city || filters.city === city).map(city => {
       const cityProjects = visible.filter(p => p.municipality === city);

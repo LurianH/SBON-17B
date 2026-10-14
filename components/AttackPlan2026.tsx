@@ -1,4 +1,4 @@
-import {attackPlan2026,attackPlanSummary,attackPlanDuplicateIds, type PlanSegment} from '@/lib/attack-plan-2026';
+import {attackPlan2026,attackPlanSummary,attackPlanDuplicateIds} from '@/lib/attack-plan-2026';
 import './attack-plan-2026.css';
 export function AttackPlan2026({segment}: {segment:'consolidado'|'agua'|'esgoto'}) {
  const rows=attackPlan2026.filter(r=>segment==='consolidado'||r.segment===(segment==='agua'?'WATER':'SEWER'));

@@ -1,7 +1,7 @@
 import {z} from 'zod';
 import {prepareLocalizedWork, type LocalizedWorkInput} from './localized-works-persistence';
 
-// CONTRATO DE DADOS: preparação para o banco, nenhuma escrita habilitada.
+// Validation of an explicitly selected existing engineering project.
 // A identificação do projeto é UUID, não o código textual da mancha.
 const uuid=z.string().uuid();
 export const localizedWorkDbLinkSchema=z.object({
@@ -46,8 +46,4 @@ export function prepareLocalizedWorkForDatabase(input:LocalizedWorkInput, link:u
     notes:prepared.input.notes,
   } as const;
   return {parent,update,planRowKey:prepared.rowKey};
-}
-export const localizedWorkDbWritesEnabled=false as const;
-export async function commitLocalizedWorkToDatabase():Promise<never>{
-  throw new Error('Gravação remota bloqueada: migration não aplicada e permissões não homologadas.');
 }

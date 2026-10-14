@@ -1,9 +1,9 @@
-# Integração complementar — não executar SQL ainda
+# SBON 17B — versão preparada para implantação
 
-Este pacote acrescenta ao serviço remoto existente duas consultas e a inserção de um novo snapshot via RPC. O flag `LOCALIZED_DATABASE_ENABLED` permanece **false**.
+A referência atual é [PUBLICACAO_SBON17B.md](PUBLICACAO_SBON17B.md). O código continua a branch `feat/dashboard-gerencial-sbon17b` desde `d79aec5`, sem criar novas prévias.
 
-Pré-requisitos para ativação futura: migration revisada, RPC inicial, RPC de atualização, ensaios reais de RLS e autorização explícita do responsável pelo banco de produção.
+A migration consolidada é `supabase/migrations/20261014170959_localized_works_permanent_history.sql`. **Não execute os rascunhos de `sql/` junto com ela.** Os documentos de fases anteriores registram etapas históricas e não descrevem o estado atual.
 
-Na branch de desenvolvimento: `unzip -o SBON17B_COMPLEMENTO_HISTORICO.zip && npm run typecheck`
+Reservatórios, boosters e EEEs possuem cadastro atômico, consulta central e histórico permanente. A configuração `NEXT_PUBLIC_SBON17B_LOCALIZED_WORKS_ENABLED=false` mantém a ativação pendente em qualquer ambiente não homologado. Não habilite em produção antes da autorização do responsável e da aplicação/validação da migration.
 
-**Não executa alterações no banco.** Não há botão Salvar conectado ainda.
+O painel Vitalux original e os dados de Obras Lineares de Água são preservados. Nenhum serviço adicional, migration remota, alteração de produção ou publicação é executado por esta entrega de código.
