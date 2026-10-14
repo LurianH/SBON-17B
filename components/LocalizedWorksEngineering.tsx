@@ -3,7 +3,8 @@
 import {useEffect, useRef, useState} from 'react';
 import './localized-works-engineering.css';
 import {attackPlan2026} from '@/lib/attack-plan-2026';
-import {prepareLocalizedWork, LOCALIZED_WORKS_REMOTE_WRITE_ENABLED} from '@/lib/localized-works-persistence';
+import {prepareLocalizedWork} from '@/lib/localized-works-persistence';
+import {LOCALIZED_DATABASE_ENABLED, saveNewLocalizedWork, saveLocalizedWorkUpdate, listLocalizedWorkHistory, type LocalizedDbUpdate} from '@/lib/localized-works-remote';
 
 type Kind = 'RESERVOIR'|'BOOSTER'|'EEE';
 type Status = 'NOT_STARTED'|'IN_PROGRESS'|'COMPLETED';
@@ -23,6 +24,8 @@ const initial:RecordWork[]=[
 function validNonnegative(value:string){return value.trim()===''||(Number.isFinite(Number(value))&&Number(value)>=0);}
 export function LocalizedWorksEngineering(){
  const [hydrated,setHydrated]=useState(false);
+ const [busy,setBusy]=useState(false);
+ const [remoteHistory,setRemoteHistory]=useState<string[]>([]);
  const [rows,setRows]=useState<RecordWork[]>(initial),[editing,setEditing]=useState<RecordWork|null>(null),[message,setMessage]=useState(''),[filter,setFilter]=useState<'ALL'|Kind>('ALL');
  const [history,setHistory]=useState<Array<{key:string;name:string;action:string;at:string}>>([]);
  const [showHistory,setShowHistory]=useState(false);
@@ -93,7 +96,7 @@ export function LocalizedWorksEngineering(){
  }
  const update=(key:keyof RecordWork,value:string)=>setEditing(old=>old?{...old,[key]:value}:null);
  const counts=(kind:Kind)=>rows.filter(r=>r.kind===kind).length;
- function submit(e:React.FormEvent<HTMLFormElement>){
+ async function submit(e:React.FormEvent<HTMLFormElement>){
   e.preventDefault();if(!editing)return;
   if(!editing.name.trim()||!editing.stain.trim()){setMessage('Informe a obra e selecione uma mancha do Plano de Ataque.');return;}
   if(!planOptions.some(r=>r.stainId===editing.stain)){setMessage('A mancha não corresponde ao município e ao sistema desta estrutura.');return;}
@@ -108,6 +111,31 @@ export function LocalizedWorksEngineering(){
   try {
    prepareLocalizedWork({name:editing.name,rowKey:selected.rowKey,kind:editing.kind,quantity:Number(editing.units),capacityM3:optionalNumber(editing.capacity),powerCv:optionalNumber(editing.power),flowLps:optionalNumber(editing.flow),hmtMca:optionalNumber(editing.hmt),material:editing.material.trim()||null,hydraulic:editing.hydraulic,electrical:editing.kind==='EEE'?editing.electrical:null,structural:editing.kind==='EEE'?editing.structural:null,budget:editing.budget,contractualCode:editing.contractualCode.trim()||null,notes:editing.notes.trim()||null,referenceDate:new Date().toISOString().slice(0,10)});
   } catch(error){setMessage(error instanceof Error?`Validação: ${error.message}`:'Falha de validação dos dados.');return;}
+  // Escrita remota só pode ocorrer após migração, validação de RLS e liberação explícita.
+  // O serviço de banco mantém a trava independente da interface.
+  if(LOCALIZED_DATABASE_ENABLED){
+   const toNumber=(v:string)=>v.trim()===''?null:Number(v);
+   const update:LocalizedDbUpdate={reference_date:new Date().toISOString().slice(0,10),
+    project_status:editing.hydraulic,physical_status:'NOT_STARTED',budget_status:editing.budget,
+    pump_power_cv:toNumber(editing.power),flow_lps:toNumber(editing.flow),head_mca:toNumber(editing.hmt),
+    capacity_m3:toNumber(editing.capacity),material:editing.material.trim()||null,
+    hydraulic_project_status:editing.hydraulic,electrical_project_status:editing.kind==='EEE'?editing.electrical:null,
+    structural_project_status:editing.kind==='EEE'?editing.structural:null,
+    contractual_item_code:editing.contractualCode.trim()||null,approved_budget_brl:null,
+    notes:editing.notes.trim()||null};
+   setBusy(true);
+   try {
+    if(/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(editing.id)){
+     await saveLocalizedWorkUpdate(editing.id,update);
+    }else{
+     await saveNewLocalizedWork({plan_row_key:selected.rowKey,engineering_project_id:null,
+      kind:editing.kind,designation:editing.name.trim(),quantity:Number(editing.units)},update);
+    }
+    setEditing(null);setMessage('Registro enviado ao banco. Recarregue a consulta para conferir o histórico.');
+   }catch(error){setMessage(error instanceof Error?error.message:'Falha ao salvar no banco.');}
+   finally{setBusy(false);}
+   return;
+  }
   const existed=rows.some(r=>r.id===editing.id);
   const saved={...editing,name:editing.name.trim(),stain:editing.stain.trim()};
   setRows(old=>old.some(r=>r.id===saved.id)?old.map(r=>r.id===saved.id?saved:r):[...old,{...saved,id:`local-${Date.now()}-${old.length}`}]);
@@ -117,7 +145,9 @@ export function LocalizedWorksEngineering(){
  return <section className="panel localized-works" aria-label="Obras localizadas">
   <div className="localized-heading"><div><span className="localized-eyebrow">ENGENHARIA · OBRAS LOCALIZADAS</span><h2>Reservatórios, boosters e EEEs</h2><p>Controle técnico por mancha, separado das redes lineares, economias e medições.</p></div><button type="button" onClick={()=>{setEditing({...empty});setMessage('');}}>Cadastrar estrutura</button></div>
   <p role="status" className="localized-warning"><strong>Rascunho local, sem gravação no Supabase.</strong> Alterações validadas ficam salvas automaticamente neste navegador após clicar em "Aplicar na prévia". Exporte um JSON para ter uma cópia independente: limpar dados do navegador ou trocar de computador pode apagar este rascunho. Não é histórico oficial de banco.</p>
-  <div className="localized-preview-actions"><button type="button" onClick={exportBackup}>Exportar arquivo de segurança</button><button type="button" onClick={()=>fileInput.current?.click()}>Importar arquivo</button><input ref={fileInput} type="file" accept="application/json,.json" aria-label="Importar arquivo de Obras Localizadas" style={{display:'none'}} onChange={e=>{const file=e.target.files?.[0];if(file)void importBackup(file);e.target.value='';}}/><button type="button" onClick={()=>setShowHistory(v=>!v)}>{showHistory?'Ocultar histórico da prévia':'Histórico da prévia'}</button><span>Gravação remota: {LOCALIZED_WORKS_REMOTE_WRITE_ENABLED?'ativa':'bloqueada'}</span></div>
+  <div className="localized-preview-actions"><button type="button" onClick={exportBackup}>Exportar arquivo de segurança</button><button type="button" onClick={()=>fileInput.current?.click()}>Importar arquivo</button><input ref={fileInput} type="file" accept="application/json,.json" aria-label="Importar arquivo de Obras Localizadas" style={{display:'none'}} onChange={e=>{const file=e.target.files?.[0];if(file)void importBackup(file);e.target.value='';}}/><button type="button" onClick={()=>setShowHistory(v=>!v)}>{showHistory?'Ocultar histórico da prévia':'Histórico da prévia'}</button><span>Gravação remota: {LOCALIZED_DATABASE_ENABLED?'habilitada':'bloqueada'}</span></div>
+  {LOCALIZED_DATABASE_ENABLED&&editing&&/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(editing.id)&&<button type="button" onClick={async()=>{try{const h=await listLocalizedWorkHistory(editing.id);setRemoteHistory(h.map(x=>JSON.stringify(x)));}catch(e){setMessage(e instanceof Error?e.message:'Erro de leitura.');}}}>Consultar histórico central</button>}
+  {remoteHistory.length>0&&<details><summary>Histórico central carregado</summary><pre>{remoteHistory.join('\n')}</pre></details>}
   {showHistory&&<div role="region" aria-label="Histórico local de demonstração"><h3>Alterações nesta sessão</h3>{history.length?history.map(h=><p key={h.key}>{h.at} · {h.action} · {h.name}</p>):<p>Sem alterações nesta sessão.</p>}<p><small>Registro temporário somente nesta aba, não é histórico de banco.</small></p></div>}
   <div className="localized-types"><article className="localized-type"><h3>Reservatórios</h3><strong>{counts('RESERVOIR')} referência(s)</strong><p>Capacidade m³, material e projeto</p></article><article className="localized-type"><h3>Boosters</h3><strong>{counts('BOOSTER')} referência(s)</strong><p>CV, vazão (L/s) e HMT (mca)</p></article><article className="localized-type"><h3>Estações elevatórias (EEE)</h3><strong>{counts('EEE')} referência(s)</strong><p>Motobombas; hidráulico, elétrico e estrutural</p></article></div>
   <div className="localized-preview-filter"><label>Tipo de obra <select value={filter} onChange={e=>setFilter(e.target.value as typeof filter)}><option value="ALL">Todas</option>{Object.entries(kindLabels).map(([v,n])=><option key={v} value={v}>{n}</option>)}</select></label></div>
@@ -137,7 +167,7 @@ export function LocalizedWorksEngineering(){
    <label>Situação orçamentária<select value={editing.budget} onChange={e=>update('budget',e.target.value)}>{Object.entries(budgetLabels).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label>
    <label>Item contratual / SPE / CPU<input maxLength={80} value={editing.contractualCode} onChange={e=>update('contractualCode',e.target.value)}/></label>
    <label className="localized-wide">Observações<textarea maxLength={2000} rows={3} value={editing.notes} onChange={e=>update('notes',e.target.value)}/></label>
-  </div><div className="localized-preview-actions"><button type="submit">Aplicar na prévia</button><button type="button" onClick={()=>{setEditing(null);setMessage('');}}>Cancelar</button></div></form>}
+  </div><div className="localized-preview-actions"><button type="submit" disabled={busy}>{LOCALIZED_DATABASE_ENABLED?'Salvar no Supabase':'Aplicar na prévia'}</button><button type="button" onClick={()=>{setEditing(null);setMessage('');}}>Cancelar</button></div></form>}
   {message&&<p role="status" className="localized-warning">{message}</p>}
  </section>;
 }
