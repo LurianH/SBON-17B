@@ -3,6 +3,8 @@ import {AppShell} from '@/components/AppShell';
 import {EngineeringPanel} from '@/components/EngineeringPanel';
 import {createClient} from '@/lib/supabase/server';
 import {canReadEngineering, type Category, type Project, type Update} from '@/lib/engineering';
+import {LOCALIZED_DATABASE_ENABLED, loadLocalizedWorks} from '@/lib/localized-works-remote';
+import type {LocalizedWorkRow} from '@/lib/localized-works-model';
 import './engineering.css';
 
 export const dynamic = 'force-dynamic';
@@ -37,5 +39,10 @@ export default async function EngineeringPage() {
     }
   }
   if (notice) {projects = []; updates = [];}
-  return <AppShell title="Engenharia" eyebrow="LIBERAÇÃO DE PROJETOS"><EngineeringPanel projects={projects} updates={updates} categories={categories} role={profile.role} contractId={notice ? null : contract?.id ?? null} notice={notice}/></AppShell>;
+  let localizedWorks: LocalizedWorkRow[] = [], localizedNotice = '';
+  if (LOCALIZED_DATABASE_ENABLED && contract && !notice) {
+    try {localizedWorks = await loadLocalizedWorks(db, contract.id);}
+    catch {localizedNotice = 'Não foi possível carregar as obras localizadas. Verifique a implantação ou tente novamente.';}
+  }
+  return <AppShell title="Engenharia" eyebrow="LIBERAÇÃO DE PROJETOS"><EngineeringPanel projects={projects} updates={updates} categories={categories} role={profile.role} contractId={notice ? null : contract?.id ?? null} notice={notice} localizedWorks={localizedWorks} localizedNotice={localizedNotice}/></AppShell>;
 }

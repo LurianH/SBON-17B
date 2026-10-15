@@ -1,7 +1,7 @@
 // Isolated PostgreSQL only. No environment credentials or network connections.
 import assert from 'node:assert/strict';
 import {readFile, readdir} from 'node:fs/promises';
-import {PGlite} from '../tmp/db-verification/node_modules/@electric-sql/pglite/dist/index.js';
+import {PGlite} from '@electric-sql/pglite';
 
 const db = new PGlite();
 const migration = '20260914124220_decouple_weekly_progress_engineering.sql';

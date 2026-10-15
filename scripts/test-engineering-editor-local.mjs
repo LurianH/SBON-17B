@@ -1,7 +1,7 @@
 // Apenas PostgreSQL isolado já instalado em tmp/. Nunca conecta ao remoto.
 import {readFile,readdir} from 'node:fs/promises';
 import assert from 'node:assert/strict';
-import {PGlite} from '../tmp/db-verification/node_modules/@electric-sql/pglite/dist/index.js';
+import {PGlite} from '@electric-sql/pglite';
 const db=new PGlite();
 try {
   await db.exec(`create role anon; create role authenticated; create schema auth;
@@ -10,7 +10,7 @@ try {
     $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
     grant usage on schema auth to anon,authenticated;
     grant execute on function auth.uid() to anon,authenticated;`);
-  for(const file of (await readdir('supabase/migrations')).filter(f=>f.endsWith('.sql')&&!f.includes('add_engineering_projects')).sort()) {
+  for(const file of (await readdir('supabase/migrations')).filter(f=>f.endsWith('.sql')&&f<'20260911183427_add_engineering_projects.sql').sort()) {
     await db.exec(await readFile(`supabase/migrations/${file}`,'utf8'));
   }
   // Fingerprint lógico de todas as tabelas públicas/auth anteriores, sem mostrar dados.
