@@ -59,18 +59,58 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
     {filtered && <p className="engineering-context">Indicadores e cidades refletem os filtros · {visible.length} projetos encontrados</p>}
     {!notice && !all.length && <p className="engineering-notice">Aguardando cadastro</p>}
     {!notice && all.length > 0 && !visible.length && <p role="status">Nenhum projeto corresponde aos filtros.</p>}
+    <nav className="engineering-overview-nav" aria-label="Navegação do painel de engenharia">
+      <a href="#engenharia-aprovacoes">Aprovações</a>
+      <a href="#engenharia-redes">Redes por diâmetro e município</a>
+      <a href="#engenharia-estruturas">EEE, reservatórios e boosters</a>
+      <a href="#engenharia-cidades">Manchas e municípios</a>
+    </nav>
+    <section className="engineering-overview-summary" aria-label="Resumo gerencial da engenharia">
+      <article><span>Projetos gerais</span><strong>{general.length}</strong><small>Ativos nos filtros selecionados</small></article>
+      <article><span>Contratada Estática</span><strong>{statics.length}</strong><small>Projetos com categoria Estática no cadastro</small></article>
+      <article><span>Obras lineares de Água</span><strong>{linearVisible.length}</strong><small>Projetos com detalhamento por diâmetro</small></article>
+      <article><span>Projetos de Engenharia</span><strong>{visible.length}</strong><small>Total exibido conforme filtros</small></article>
+    </section>
+    <div id="engenharia-aprovacoes" className="engineering-section-label"><h2>Aprovações e entregas</h2><p>Indicadores calculados sobre os registros atuais; Estática e projetos gerais permanecem separados.</p></div>
     <section className="engineering-status" aria-label="Evolução dos projetos">
       <StatusKpi title="Concepção aprovada – Sala de Guerra · Geral" projects={general}/>
       <StatusKpi title="Projetos executivos finalizados · Geral" projects={general} executive/>
       <StatusKpi title="Estática – Concepção aprovada Sala de Guerra" projects={statics}/>
       <StatusKpi title="Estática – Projeto executivo" projects={statics} executive/>
     </section>
-    <section className="panel engineering-totals" aria-label="Consolidação de economias e metragem">
+    <section id="engenharia-redes" className="panel engineering-totals" aria-label="Consolidação de economias e metragem">
       <SegmentAmounts title="Água" projects={visible.filter(p => p.segment_type === 'WATER')}/><SegmentAmounts title="Esgoto" projects={visible.filter(p => p.segment_type === 'SEWER')}/><SegmentAmounts title="Total" projects={visible}/>
     </section>
     {!notice && <EngineeringWaterLinearSection projects={linearVisible} canEdit={canEdit} contractId={contractId} onSaved={() => setFeedback('Atualização de obra linear salva. Histórico preservado.')}/>}
+
+    <section className="panel engineering-sewer-overview" aria-label="Projetos de Esgoto — Obras Lineares">
+      <header className="engineering-sewer-head"><div><span className="water-linear-eyebrow">ACOMPANHAMENTO DE ENTREGAS</span><h2>Projetos de Esgoto — Obras Lineares</h2><p>Consolidado dos projetos de Esgoto já cadastrados, com aprovação e extensão de rede por município. Nenhum quantitativo é estimado.</p></div></header>
+      {(() => {
+        const sewer = visible.filter(project => project.segment_type === 'SEWER');
+        const total = summarizeEngineering(sewer);
+        return <>
+          <div className="engineering-sewer-kpis">
+            <article><span>Projetos de Esgoto</span><strong>{total.count}</strong><small>Projetos ativos nos filtros</small></article>
+            <article><span>Concepções aprovadas</span><strong>{total.approved} / {total.count}</strong><small>{total.conceptPercent === null ? 'Sem projetos cadastrados' : `${total.conceptPercent.toFixed(1).replace('.', ',')}% do total`}</small></article>
+            <article><span>Executivos finalizados</span><strong>{total.completed} / {total.count}</strong><small>{total.executivePercent === null ? 'Sem projetos cadastrados' : `${total.executivePercent.toFixed(1).replace('.', ',')}% do total`}</small></article>
+            <article><span>Metragem aprovada</span><Amount metric={total.length} meters/><small>Sem conversão em economias</small></article>
+          </div>
+          <div className="engineering-sewer-table-wrap"><table>
+            <thead><tr><th>Município</th><th>Projetos</th><th>Concepções aprovadas</th><th>Executivos finalizados</th><th>Rede aprovada</th></tr></thead>
+            <tbody>{municipalities.filter(city => !filters.city || city === filters.city).map(city => {
+              const items=sewer.filter(project => project.municipality === city);
+              const summary=summarizeEngineering(items);
+              return <tr key={city}><th scope="row">{city}</th><td>{summary.count}</td><td>{summary.approved}</td><td>{summary.completed}</td><td>{summary.length.value === null ? 'Aguardando dados' : format(summary.length.value,true)}{summary.length.partial ? ' · parcial' : ''}</td></tr>;
+            })}</tbody>
+          </table></div>
+          <p className="engineering-sewer-context">O detalhamento por mancha permanece nos projetos existentes. A abertura de Esgoto por diâmetro depende do respectivo cadastro técnico; não será inferida da metragem total.</p>
+        </>;
+      })()}
+    </section>
+    <div id="engenharia-estruturas" className="engineering-section-label"><h2>Obras localizadas</h2><p>Estruturas existentes, situação técnica, orçamento e histórico permanente.</p></div>
     <LocalizedWorksEngineering role={role} contractId={contractId} projects={projects} initialWorks={localizedWorks} notice={localizedNotice} readOnly={director}/>
     {canEdit && editing && <EngineeringForm key={editing === 'new' ? 'new' : editing.id} project={editing === 'new' ? null : editing} categories={categories} contractId={contractId!} onClose={() => setEditing(null)} onSaved={() => {setEditing(null); setFeedback('Atualização salva. Histórico preservado.');}}/>}
+    <div id="engenharia-cidades" className="engineering-section-label"><h2>Projetos por município e mancha</h2><p>Detalhamento existente preservado, sem alterar quantitativos.</p></div>
     <section className="engineering-cities" aria-label="Aprovações por cidade">{municipalities.filter(city => !filters.city || filters.city === city).map(city => {
       const cityProjects = visible.filter(p => p.municipality === city);
       return <article className="panel" key={city}><h2>{city}</h2><div className="engineering-city-segments"><SegmentAmounts title="Água" projects={cityProjects.filter(p => p.segment_type === 'WATER')}/><SegmentAmounts title="Esgoto" projects={cityProjects.filter(p => p.segment_type === 'SEWER')}/></div>
