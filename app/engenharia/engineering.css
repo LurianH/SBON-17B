@@ -15,3 +15,18 @@
 .engineering-section-label p{font-size:13px;color:#5A6463;margin:4px 0 0}
 @media(max-width:1000px){.engineering-overview-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:550px){.engineering-overview-summary{grid-template-columns:1fr}}
+
+.engineering-sewer-overview{margin-bottom:24px;padding:clamp(16px,2.5vw,28px)}
+.engineering-sewer-head h2{font-size:clamp(20px,2.4vw,28px);color:#0E4E4C;margin:2px 0 6px}
+.engineering-sewer-head p{font-size:14px;color:#5A6463;margin:0}
+.engineering-sewer-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:22px 0}
+.engineering-sewer-kpis article{padding:16px;background:#FAFCFB;border:1px solid #D7E2E1;border-radius:9px;min-width:0}
+.engineering-sewer-kpis article>span,.engineering-sewer-kpis article>small{display:block;font-size:12px;color:#5A6463}
+.engineering-sewer-kpis article>strong{display:block;font-size:clamp(20px,2.4vw,28px);color:#0E4E4C;overflow-wrap:anywhere}
+.engineering-sewer-table-wrap{overflow-x:auto}
+.engineering-sewer-table-wrap table{width:100%;border-collapse:collapse;min-width:650px;font-size:13px}
+.engineering-sewer-table-wrap th,.engineering-sewer-table-wrap td{text-align:left;padding:12px 10px;border-bottom:1px solid #D7E2E1}
+.engineering-sewer-table-wrap thead{background:#F2F6F5;color:#0E4E4C}
+.engineering-sewer-context{font-size:12px;color:#5A6463;margin:15px 0 0}
+@media(max-width:1000px){.engineering-sewer-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:550px){.engineering-sewer-kpis{grid-template-columns:1fr}}
