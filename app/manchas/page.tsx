@@ -16,7 +16,7 @@ export default async function ManchasPage(){
  if(!contract)return <AppShell title="Cadastro de manchas"><p>Contrato não encontrado.</p></AppShell>;
  const [targets,stains,history]=await Promise.all([
   db.from('contract_stain_targets').select('*').eq('contract_id',contract.id).order('segment_type'),
-  db.from('contract_stains').select('*').eq('contract_id',contract.id).order('segment_type').order('municipality').order('stain_code'),
+  db.from('contract_stain_effective_status').select('*').eq('contract_id',contract.id).order('segment_type').order('municipality').order('stain_code'),
   db.from('contract_stain_history').select('id,stain_id,old_status,new_status,changed_at').order('changed_at',{ascending:false}).limit(25)
  ]);
  const error=targets.error||stains.error||history.error;
