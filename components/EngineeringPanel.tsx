@@ -9,6 +9,8 @@ import {canWriteEngineering, conceptLabels, currentProjects, deliveryLabels, emp
   type Category, type CurrentProject, type EngineeringFilters, type Project, type Update} from '@/lib/engineering';
 import {EngineeringWaterLinearSection} from '@/components/EngineeringWaterLinearSection';
 import {EngineeringManagementOverview} from '@/components/EngineeringManagementOverview';
+import {EngineeringReviewStatus} from '@/components/EngineeringReviewStatus';
+import type {ProjectReviewRow} from '@/lib/project-review-status';
 import type {LocalizedWorkRow} from '@/lib/localized-works-model';
 
 const format = (v: number | null, meters = false) => v === null ? 'Aguardando atualização' : new Intl.NumberFormat('pt-BR', {maximumFractionDigits: 3}).format(v) + (meters ? ' m' : '');
@@ -29,10 +31,11 @@ function SegmentAmounts({projects, title}: {projects: CurrentProject[]; title: s
   return <div className="engineering-segment"><h3>{title}</h3><span>Economias aprovadas</span><Amount metric={summary.economies}/><span>Metragem aprovada</span><Amount metric={summary.length} meters/></div>;
 }
 
-export function EngineeringPanel({projects, updates, categories, role, contractId, notice, localizedWorks=[], localizedNotice='', stainSummary={waterTotal:28,sewerTotal:74,waterClassified:0,sewerClassified:0}}: {
+export function EngineeringPanel({projects, updates, categories, role, contractId, notice, localizedWorks=[], localizedNotice='', stainSummary={waterTotal:28,sewerTotal:74,waterClassified:0,sewerClassified:0}, reviewRows=[]}: {
   projects: Project[]; updates: Update[]; categories: Category[]; role: string | null; contractId: string | null; notice: string;
   localizedWorks?: LocalizedWorkRow[]; localizedNotice?: string;
   stainSummary?: {waterTotal:number;sewerTotal:number;waterClassified:number;sewerClassified:number};
+  reviewRows?: ProjectReviewRow[];
 }) {
   const [filters, setFilters] = useState<EngineeringFilters>(emptyFilters);
   const [editing, setEditing] = useState<CurrentProject | 'new' | null>(null);
@@ -66,6 +69,7 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
       <a href="#engenharia-aprovacoes">Aprovações</a>
       <a href="#engenharia-redes">Redes por diâmetro e município</a>
       <a href="#engenharia-estruturas">EEE, reservatórios e boosters</a>
+      <a href="#engenharia-classificacao">Classificação de projetos</a>
       <a href="#engenharia-cidades">Manchas e municípios</a>
     </nav>
     <section className="engineering-overview-summary" aria-label="Resumo gerencial da engenharia">
@@ -74,7 +78,7 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
       <article><span>Obras lineares de Água</span><strong>{linearVisible.length}</strong><small>Projetos com detalhamento por diâmetro</small></article>
       <article><span>Projetos de Engenharia</span><strong>{visible.length}</strong><small>Total exibido conforme filtros</small></article>
     </section>
-    <div id="engenharia-aprovacoes" className="engineering-section-label"><h2>Aprovações e entregas</h2><p>Indicadores calculados sobre os registros atuais; Estática e projetos gerais permanecem separados.</p></div>
+    <div id="engenharia-aprovacoes" className="engineering-section-label"><h2>Aprovações e entregas</h2></div>
     <section className="engineering-status" aria-label="Evolução dos projetos">
       <StatusKpi title="Concepção aprovada – Sala de Guerra · Geral" projects={general}/>
       <StatusKpi title="Projetos executivos finalizados · Geral" projects={general} executive/>
@@ -113,16 +117,12 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
     <div id="engenharia-estruturas" className="engineering-section-label"><h2>Obras localizadas</h2><p>Estruturas existentes, situação técnica, orçamento e histórico permanente.</p></div>
     <LocalizedWorksEngineering role={role} contractId={contractId} projects={projects} initialWorks={localizedWorks} notice={localizedNotice} readOnly={director}/>
     {canEdit && editing && <EngineeringForm key={editing === 'new' ? 'new' : editing.id} project={editing === 'new' ? null : editing} categories={categories} contractId={contractId!} onClose={() => setEditing(null)} onSaved={() => {setEditing(null); setFeedback('Atualização salva. Histórico preservado.');}}/>}
-    <div id="engenharia-cidades" className="engineering-section-label"><h2>Projetos por município e mancha</h2><p>Detalhamento existente preservado, sem alterar quantitativos.</p></div>
+    <EngineeringReviewStatus projects={visible} initial={reviewRows} canEdit={canEdit} onEdit={project=>{setEditing(project);requestAnimationFrame(()=>document.getElementById('engineering-form')?.scrollIntoView({behavior:'smooth'}));}}/>
+    <div id="engenharia-cidades" className="engineering-section-label"><h2>Projetos por município e mancha</h2></div>
     <section className="engineering-cities" aria-label="Aprovações por cidade">{municipalities.filter(city => !filters.city || filters.city === city).map(city => {
       const cityProjects = visible.filter(p => p.municipality === city);
       return <article className="panel" key={city}><h2>{city}</h2><div className="engineering-city-segments"><SegmentAmounts title="Água" projects={cityProjects.filter(p => p.segment_type === 'WATER')}/><SegmentAmounts title="Esgoto" projects={cityProjects.filter(p => p.segment_type === 'SEWER')}/></div>
-        {cityProjects.length > 0 && <details><summary>Ver projetos ({cityProjects.length})</summary>{Object.entries(segments).map(([segment, label]) => <section key={segment}><h3>{label}</h3>{cityProjects.filter(p => p.segment_type === segment).map(p => <div className="engineering-project" key={p.id}><h4>{p.project_name}</h4><span>{categories.find(c => c.code === p.project_category)?.label ?? p.project_category}</span>
-          {p.project_category === 'WATER_LINEAR' && p.project_type === 'PE' ? <dl><div><dt>Entrega</dt><dd>{p.current?.delivery_status ? deliveryLabels[p.current.delivery_status] : 'Aguardando atualização'}</dd></div><div><dt>Economias</dt><dd>{format(p.current?.approved_economies ?? null)}</dd></div><div><dt>PEAD DE63</dt><dd>{format(p.current?.pead_de63_length_m == null ? null : Number(p.current.pead_de63_length_m), true)}</dd></div><div><dt>PEAD DE110</dt><dd>{format(p.current?.pead_de110_length_m == null ? null : Number(p.current.pead_de110_length_m), true)}</dd></div></dl>
-            : <dl><div><dt>Concepção</dt><dd>{p.current?.concept_status ? conceptLabels[p.current.concept_status] : 'Não informada'}</dd></div><div><dt>Executivo</dt><dd>{p.current?.executive_status ? executiveLabels[p.current.executive_status] : 'Não informado'}</dd></div><div><dt>Economias</dt><dd>{format(p.current?.approved_economies ?? null)}</dd></div><div><dt>Metragem</dt><dd>{format(p.current?.approved_length_m == null ? null : Number(p.current.approved_length_m), true)}</dd></div></dl>}
-          {p.current && <small>Última atualização: {instant(p.current.created_at)} · Referência: {day(p.current.reference_date)}</small>}
-          {!director && <History projectId={p.id} linear={p.project_category === 'WATER_LINEAR' && p.project_type === 'PE'} />}{canEdit && !(p.project_category === 'WATER_LINEAR' && p.project_type === 'PE') && <button onClick={() => {setEditing(p); requestAnimationFrame(() => document.getElementById('engineering-form')?.scrollIntoView({behavior: 'smooth'}));}}>Atualizar projeto</button>}
-        </div>)}</section>)}</details>}
+
       </article>;
     })}</section>
   </div>;
