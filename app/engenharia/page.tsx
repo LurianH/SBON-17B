@@ -55,7 +55,7 @@ export default async function EngineeringPage() {
     if(!stains.error){for(const item of stains.data??[]){if(item.status==='UNCLASSIFIED')continue;if(item.segment_type==='WATER')stainSummary.waterClassified++;if(item.segment_type==='SEWER')stainSummary.sewerClassified++;}}
   }
   let reviewRows: ProjectReviewRow[]=[];
-  if(contract&&!notice){
+  if(contract&&!notice&&projects.length>0){
     const result=await db.from('engineering_project_review_status').select('engineering_project_id,status')
       .in('engineering_project_id',projects.map(project=>project.id));
     if(!result.error&&result.data)reviewRows=result.data as ProjectReviewRow[];
