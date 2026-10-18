@@ -49,7 +49,7 @@ export default async function EngineeringPage() {
   if(contract&&!notice){
     const [targets,stains]=await Promise.all([
       db.from('contract_stain_targets').select('segment_type,total_count').eq('contract_id',contract.id),
-      db.from('contract_stain_effective_status').select('segment_type,effective_status').eq('contract_id',contract.id)
+      db.from('gis_stain_system_effective').select('segment_type,effective_status').eq('contract_id',contract.id)
     ]);
     if(!targets.error){for(const item of targets.data??[]){if(item.segment_type==='WATER')stainSummary.waterTotal=Number(item.total_count);if(item.segment_type==='SEWER')stainSummary.sewerTotal=Number(item.total_count);}}
     if(!stains.error){for(const item of stains.data??[]){if(item.effective_status==='UNCLASSIFIED')continue;if(item.segment_type==='WATER')stainSummary.waterClassified++;if(item.segment_type==='SEWER')stainSummary.sewerClassified++;}}

@@ -70,7 +70,7 @@ export default function Dashboard(){
    const [works,targets,stains]=await Promise.all([
     db.from('engineering_localized_works').select('kind,quantity').eq('contract_id',result.contractId).eq('active',true),
     db.from('contract_stain_targets').select('segment_type,total_count').eq('contract_id',result.contractId),
-    db.from('contract_stain_effective_status').select('segment_type,effective_status').eq('contract_id',result.contractId)
+    db.from('gis_stain_system_effective').select('segment_type,effective_status').eq('contract_id',result.contractId)
    ]);
    if(!active)return;
    if(!works.error&&works.data){
