@@ -9,7 +9,7 @@ type TargetRow={id:string;segment_type:string;total_count:number};
 type StainRow={id:string;segment_type:string;municipality:string;stain_code:string;status:string;notes:string|null};
 type HistoryRow={id:string;stain_id:string;old_status:string|null;new_status:string;changed_at:string};
 const labels:Record<string,string>={
- UNCLASSIFIED:'Sem classificação',NO_OBJECTION:'Sem objeção',NO_OBJECTION_RESERVATIONS:'Sem objeção com ressalvas',
+ UNCLASSIFIED:'Sem classificação',NO_OBJECTION:'Sem objeção',NO_OBJECTION_RESERVATIONS:'S/Obj. com ressalvas',
  IN_PREPARATION:'Em elaboração',IN_REVIEW:'Em revisão',NOT_STARTED:'A iniciar',CANCELLED:'Cancelado'
 };
 const cities=['Porangaba','Quadra','Tatuí','Conchas','Pereiras'];
