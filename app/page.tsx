@@ -70,7 +70,7 @@ export default function Dashboard(){
    const [works,targets,stains]=await Promise.all([
     db.from('engineering_localized_works').select('kind,quantity').eq('contract_id',result.contractId).eq('active',true),
     db.from('contract_stain_targets').select('segment_type,total_count').eq('contract_id',result.contractId),
-    db.from('contract_stains').select('segment_type,status').eq('contract_id',result.contractId)
+    db.from('contract_stain_effective_status').select('segment_type,effective_status').eq('contract_id',result.contractId)
    ]);
    if(!active)return;
    if(!works.error&&works.data){
@@ -82,7 +82,7 @@ export default function Dashboard(){
     const totals:StainState['totals']={WATER:28,SEWER:74};
     for(const row of targets.data){const seg=String(row.segment_type);if(seg==='WATER')totals.WATER=Number(row.total_count);else if(seg==='SEWER')totals.SEWER=Number(row.total_count);}
     const counts:StainState['counts']={WATER:{},SEWER:{}};
-    for(const row of stains.data){const seg=String(row.segment_type);const status=String(row.status);if(seg==='WATER')counts.WATER[status]=(counts.WATER[status]??0)+1;else if(seg==='SEWER')counts.SEWER[status]=(counts.SEWER[status]??0)+1;}
+    for(const row of stains.data){const seg=String(row.segment_type);const status=String(row.effective_status);if(seg==='WATER')counts.WATER[status]=(counts.WATER[status]??0)+1;else if(seg==='SEWER')counts.SEWER[status]=(counts.SEWER[status]??0)+1;}
     setStainState({totals,counts});
    }
   })();
