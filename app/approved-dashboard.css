@@ -1,0 +1,123 @@
+/* Vitalux 2026 — interface executiva; estilos confinados a va-* */
+.va-app{--va:#007977;--va-dark:#0E4E4C;--va-orange:#FB7707;--va-blue:#003399;--va-gray:#5A6463;min-height:100vh;background:#F2F6F5;color:#333;font-family:Aptos,"Segoe UI",sans-serif;display:grid;grid-template-columns:205px minmax(0,1fr);grid-template-rows:79px 1fr;grid-template-areas:"header header" "side main"}
+.va-loading{min-height:100vh;display:grid;place-items:center;background:#F2F6F5;color:#0E4E4C;font-size:21px;font-family:Aptos,"Segoe UI",sans-serif}
+.va-header{grid-area:header;background:#007977;display:flex;align-items:center;gap:27px;padding:0 24px 0 32px;color:white;position:relative;z-index:3;min-width:0}
+.va-wordmark{min-width:193px;display:flex;flex-direction:column;color:white;line-height:1}
+.va-wordmark>div{display:flex;align-items:center;gap:7px}
+.va-wordmark b{font-size:33px;letter-spacing:-1.6px;font-weight:900;line-height:1}
+.va-wordmark em{font-size:13px;border:1.5px solid white;padding:3px 4px;font-style:normal;text-transform:uppercase;font-weight:800}
+.va-wordmark small{font-size:10px;font-weight:600;letter-spacing:.18px;border-top:1px solid #ffffffaa;margin-top:5px;padding-top:4px;text-align:center;width:190px}
+.va-header-rule{height:35px;width:1px;background:#ffffff70}
+.va-breadcrumb{font-size:20px;display:flex;align-items:center;gap:13px;white-space:nowrap}
+.va-breadcrumb strong{font-weight:750}
+.va-breadcrumb span{color:#bfe3de}
+.va-header-right{margin-left:auto;display:flex;align-items:center;gap:20px;min-width:0}
+.va-header-right>div{padding-right:18px;border-right:1px solid #ffffff70}
+.va-date{display:flex;gap:9px;align-items:center}
+.va-header-right span{font-size:11px;line-height:1.35}
+.va-header-right span small{font-size:13px;font-weight:750;display:block;margin-top:3px}
+.va-period{min-width:118px;background:#ffffff12;border:1px solid #ffffff25;padding:9px 13px;border-radius:8px}
+.va-period span{display:block}
+.va-header .logout-button,.va-header button{border:1px solid #ffffff70;background:transparent;color:white;border-radius:7px;font-size:12px;padding:9px;min-height:36px}
+.va-sidebar{grid-area:side;background:#FAFCFB;border-right:1px solid #D7E2E1;padding:21px 12px;display:flex;flex-direction:column;min-height:calc(100vh - 79px)}
+.va-sidebar .main-navigation{display:flex;flex-direction:column;gap:5px}
+.va-sidebar .main-navigation a{display:flex;align-items:center;text-decoration:none;color:#526565;font-size:14px;font-weight:600;padding:13px 15px;border-radius:9px;min-height:46px;transition:background .15s}
+.va-sidebar .main-navigation a::before{content:"◦";font-size:23px;font-weight:700;line-height:0;margin:0 14px 2px 0;color:#6e9391}
+.va-sidebar .main-navigation a:hover{background:#F2F6F5;color:#0E4E4C}
+.va-sidebar .main-navigation a.active{background:#D7E2E1;color:#007977}
+.va-sidebar .main-navigation a.active::before{color:#007977}
+.va-sidebar-end{margin-top:auto;padding:22px 16px;color:#007977}
+.va-leaf{font-size:32px}
+.va-sidebar-end p{font-size:14px;line-height:1.45;margin:8px 0 0}
+.va-main{grid-area:main;min-width:0;width:100%;max-width:none;margin:0;padding:17px 18px 25px}
+.va-card{background:white;border:1px solid #E2ECEA;border-radius:13px;box-shadow:0 3px 12px #0e4e4c09;min-width:0;overflow:hidden;padding:19px}
+.va-top-grid{display:grid;grid-template-columns:1.1fr 1.1fr 1.13fr 1.3fr;gap:13px;margin-bottom:15px}
+.va-kpi{min-height:164px;padding:20px 19px}
+.va-kpi-title{display:flex;align-items:center;gap:13px;color:#007977;min-height:22px}
+.va-kpi-title h2{margin:0;font-size:13px;line-height:1.35;font-weight:850}
+.va-kpi>strong{font-size:clamp(23px,2.6vw,43px);line-height:1.05;letter-spacing:-1.3px;color:#123149;display:block;white-space:nowrap;margin:16px 0 8px}
+.va-kpi>small{display:block;font-size:12px;color:#5A6463}
+.va-projection{min-height:164px}
+.va-projection-inner{display:flex;align-items:center;gap:10px;margin-top:8px}
+.va-projection-inner p{font-size:12px;line-height:1.4;color:#5A6463;flex:1}
+.va-half-gauge{--gauge:0%;position:relative;width:128px;height:71px;flex:0 0 128px;overflow:hidden}
+.va-half-gauge::before{content:"";position:absolute;left:0;top:0;width:128px;height:128px;border-radius:50%;background:conic-gradient(from 270deg,#FB7707 0 var(--gauge),#E0E9E8 var(--gauge) 50%,transparent 50% 100%);transform:rotate(0)}
+.va-half-gauge::after{content:"";position:absolute;left:18px;top:18px;width:92px;height:92px;background:white;border-radius:50%}
+.va-half-gauge>div{position:absolute;z-index:1;top:41px;left:0;width:100%;text-align:center;display:flex;flex-direction:column}
+.va-half-gauge b{color:#123149;font-size:19px}
+.va-half-gauge small{font-size:10px;color:#5A6463}
+.va-panel-title{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:24px}
+.va-panel-title>div{display:flex;gap:9px;align-items:center;color:#007977}
+.va-panel-title h2{margin:0;font-size:13px;line-height:1.35;font-weight:850;color:#0E4E4C}
+.va-panel-title>span{font-size:11px;color:#5A6463;text-align:right}
+.va-caption-legend{font-size:10px!important;max-width:200px}
+.va-center-grid{display:grid;grid-template-columns:1.47fr 1.18fr .9fr;gap:13px;align-items:stretch;margin-bottom:15px}
+.va-center-grid>.va-card{min-height:354px}
+.va-goals,.va-status,.va-deviation{padding:20px}
+.va-goal-row{display:grid;grid-template-columns:112px minmax(0,1fr) 72px;gap:16px;align-items:center;margin-top:19px;padding:0 0 18px}
+.va-goal-row+.va-goal-row{border-top:1px solid #D7E2E1;padding-top:20px;margin-top:0}
+.va-goal-system{display:flex;gap:8px;align-items:center}
+.va-goal-system b{display:block;font-size:17px;color:#123149}
+.va-goal-system small{display:block;font-size:11px;color:#5A6463;line-height:1.4;margin-top:5px}
+.va-water{color:#1879C4}
+.va-sewer{color:#D64B24}
+.va-progress{height:12px;border-radius:6px;background:#E5EDEC;overflow:hidden;width:100%}
+.va-progress span{display:block;background:#FB7707;height:100%}
+.va-goal-numbers{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:#5A6463;margin-top:9px}
+.va-goal-numbers b{font-size:13px;color:#0E4E4C}
+.va-goal-context{display:block;color:#5A6463;font-size:11px;margin-top:6px}
+.va-goal-percent{text-align:right}
+.va-goal-percent strong{font-size:22px;color:#0E4E4C}
+.va-goal-percent small{display:block;font-size:10px;color:#5A6463;line-height:1.3}
+.va-status-grid{display:grid;grid-template-columns:1fr 1fr;margin-top:18px}
+.va-status-system{padding:0 12px;min-width:0}
+.va-status-system:first-child{padding-left:0;border-right:1px solid #D7E2E1}
+.va-status-system:last-child{padding-right:0}
+.va-status-name{display:flex;gap:8px;align-items:center}
+.va-status-name b{display:block;font-size:14px;color:#123149}
+.va-status-name small{display:block;font-size:10px;color:#5A6463}
+.va-status-detail{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:17px}
+.va-status-donut{width:113px;height:113px;flex:0 0 113px;display:grid;place-items:center;border-radius:100%;background:conic-gradient(#D7E2E1 0 100%);color:#0E4E4C}
+.va-status-donut>div{width:70px;height:70px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:white;border-radius:100%}
+.va-status-donut small{font-size:10px}
+.va-status-donut strong{font-size:24px;line-height:1.05}
+.va-status-legend{font-size:10px;min-width:0;display:flex;flex-direction:column;gap:5px;flex:1}
+.va-status-legend>div{display:flex;justify-content:space-between;gap:4px}
+.va-status-legend>div span{color:#5A6463;display:flex;align-items:center;gap:4px}
+.va-status-legend>div b{color:#0E4E4C;white-space:nowrap}
+.va-dot{display:inline-block;width:7px;height:7px;flex:0 0 7px;border-radius:50%}
+.va-dot-unclassified{background:#D7E2E1}.va-dot-approved{background:#007977}.va-dot-reserved{background:#198753}.va-dot-review{background:#FB7707}.va-dot-notstarted{background:#003399}
+.va-notice-small{background:#F2F6F5;color:#5A6463;border-radius:7px;padding:9px 10px;font-size:11px;line-height:1.35;margin:8px 0 0}
+.va-deviation-rows{display:flex;flex-direction:column;gap:19px;margin:26px 0 19px}
+.va-deviation-row{display:grid;grid-template-columns:minmax(80px,1fr) minmax(55px,96px) 45px;gap:9px;align-items:center;font-size:12px}
+.va-deviation-row span{color:#5A6463}
+.va-deviation-row b{text-align:right;font-size:11px;color:#123149}
+.va-deviation-track{height:16px;border-radius:6px;background:#EDF1F1;overflow:hidden}
+.va-deviation-track i{height:100%;display:block;border-radius:5px;background:#D7E2E1}
+.va-deviation-track i[data-color=orange]{background:#FB7707}.va-deviation-track i[data-color=teal]{background:#007977}.va-deviation-track i[data-color=blue]{background:#003399}.va-deviation-track i[data-color=gold]{background:#B85A00}
+.va-bottom-grid{display:grid;grid-template-columns:1.35fr 1.35fr .9fr 1fr;gap:13px}
+.va-bottom-grid>.va-card{min-height:172px}
+.va-two-metrics{display:grid;grid-template-columns:1fr 1fr;margin:18px 0 8px}
+.va-two-metrics>.va-mini:first-child{border-right:1px solid #D7E2E1;padding-right:12px}
+.va-two-metrics>.va-mini:last-child{padding-left:12px}
+.va-mini span{font-size:11px;color:#5A6463;display:block}
+.va-mini strong{font-size:clamp(17px,1.7vw,26px);color:#123149;display:block;margin:9px 0 7px;white-space:nowrap}
+.va-mini small{font-size:10px;color:#5A6463;line-height:1.4;display:block}
+.va-card-action{display:block;text-decoration:none;font-size:11px;color:#007977;font-weight:700;margin-top:13px}
+.va-structure-rows{display:flex;flex-direction:column;gap:11px;margin-top:17px}
+.va-structure-rows>div{display:flex;gap:10px;align-items:center;color:#007977;font-size:12px}
+.va-structure-rows span{color:#5A6463;flex:1}
+.va-structure-rows b{color:#123149;font-size:17px}
+.va-distribution-inner{display:grid;grid-template-columns:1fr 1fr;margin-top:18px}
+.va-distribution-inner>div{display:flex;flex-direction:column;align-items:center;gap:3px}
+.va-distribution-inner>div:first-child{border-right:1px solid #D7E2E1}
+.va-distribution-inner span{color:#123149;font-weight:750;font-size:12px}
+.va-distribution-inner strong{font-size:27px;color:#123149}
+.va-distribution-inner small{font-size:11px;color:#5A6463}
+.va-bottom-note{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:16px 5px 4px;color:#5A6463;font-size:11px}
+.va-bottom-note a{color:#007977;text-decoration:none}
+@media(max-width:1450px){.va-app{grid-template-columns:185px minmax(0,1fr)}.va-main{padding:16px 12px}.va-top-grid,.va-center-grid,.va-bottom-grid{gap:9px}.va-center-grid{grid-template-columns:1.33fr 1.28fr 1fr}.va-card{padding:15px}.va-status-detail{flex-direction:column}.va-status-legend{width:100%}.va-status-donut{height:100px;width:100px;flex-basis:100px}.va-deviation-row{grid-template-columns:minmax(74px,1fr) 60px 40px}}
+@media(max-width:1130px){.va-app{grid-template-columns:150px minmax(0,1fr)}.va-sidebar{padding:15px 7px}.va-sidebar .main-navigation a{padding:9px;font-size:12px}.va-sidebar .main-navigation a::before{margin-right:8px}.va-top-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.va-center-grid{grid-template-columns:1.3fr 1fr}.va-deviation{grid-column:span 2}.va-bottom-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.va-header{gap:16px}.va-breadcrumb{font-size:16px}.va-header-right{gap:10px}.va-header-right .va-date{display:none}}
+@media(max-width:720px){.va-app{display:block}.va-header{min-height:73px;padding:9px 16px;flex-wrap:wrap}.va-wordmark{min-width:155px}.va-wordmark b{font-size:25px}.va-wordmark small{width:148px;font-size:8px}.va-header-rule,.va-period{display:none}.va-breadcrumb{font-size:14px}.va-header-right{margin-left:0}.va-sidebar{min-height:unset;padding:5px 10px;position:sticky;top:0;z-index:4;overflow-x:auto}.va-sidebar .main-navigation{flex-direction:row;gap:3px}.va-sidebar .main-navigation a{white-space:nowrap;padding:8px;min-height:35px}.va-sidebar .main-navigation a::before,.va-sidebar-end{display:none}.va-main{padding:14px 10px}.va-top-grid,.va-center-grid,.va-bottom-grid{grid-template-columns:1fr}.va-deviation{grid-column:auto}.va-kpi{min-height:120px}.va-status-detail{flex-direction:row}.va-goal-row{grid-template-columns:110px minmax(0,1fr) 65px;gap:8px}.va-bottom-note{flex-direction:column}}
+@media(max-width:440px){.va-status-grid{grid-template-columns:1fr;gap:16px}.va-status-system:first-child{border-right:0;border-bottom:1px solid #D7E2E1;padding:0 0 15px}.va-status-system:last-child{padding:0}.va-header-right{display:none}.va-goal-row{grid-template-columns:1fr 1.1fr}.va-goal-percent{grid-column:span 2;text-align:left}.va-status-detail{justify-content:space-between}.va-deviation-row{grid-template-columns:1fr 65px 40px}}
+.va-inline-link{text-decoration:none;color:#007977;font-weight:700;font-size:11px;white-space:nowrap}.va-inline-link:hover{text-decoration:underline}
