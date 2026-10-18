@@ -5,6 +5,7 @@ import {createClient} from '@/lib/supabase/server';
 import {canReadEngineering, type Category, type Project, type Update} from '@/lib/engineering';
 import {LOCALIZED_DATABASE_ENABLED, loadLocalizedWorks} from '@/lib/localized-works-remote';
 import type {LocalizedWorkRow} from '@/lib/localized-works-model';
+import type {ProjectReviewRow} from '@/lib/project-review-status';
 import './engineering.css';
 
 export const dynamic = 'force-dynamic';
@@ -53,5 +54,11 @@ export default async function EngineeringPage() {
     if(!targets.error){for(const item of targets.data??[]){if(item.segment_type==='WATER')stainSummary.waterTotal=Number(item.total_count);if(item.segment_type==='SEWER')stainSummary.sewerTotal=Number(item.total_count);}}
     if(!stains.error){for(const item of stains.data??[]){if(item.status==='UNCLASSIFIED')continue;if(item.segment_type==='WATER')stainSummary.waterClassified++;if(item.segment_type==='SEWER')stainSummary.sewerClassified++;}}
   }
-  return <AppShell title="Engenharia" eyebrow="LIBERAÇÃO DE PROJETOS"><EngineeringPanel projects={projects} updates={updates} categories={categories} role={profile.role} contractId={notice ? null : contract?.id ?? null} notice={notice} localizedWorks={localizedWorks} localizedNotice={localizedNotice} stainSummary={stainSummary}/></AppShell>;
+  let reviewRows: ProjectReviewRow[]=[];
+  if(contract&&!notice){
+    const result=await db.from('engineering_project_review_status').select('engineering_project_id,status')
+      .in('engineering_project_id',projects.map(project=>project.id));
+    if(!result.error&&result.data)reviewRows=result.data as ProjectReviewRow[];
+  }
+  return <AppShell title="Engenharia" eyebrow="LIBERAÇÃO DE PROJETOS"><EngineeringPanel projects={projects} updates={updates} categories={categories} role={profile.role} contractId={notice ? null : contract?.id ?? null} notice={notice} localizedWorks={localizedWorks} localizedNotice={localizedNotice} stainSummary={stainSummary} reviewRows={reviewRows}/></AppShell>;
 }
