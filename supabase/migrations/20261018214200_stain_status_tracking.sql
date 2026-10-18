@@ -52,9 +52,12 @@ create trigger touch_contract_stains before update on public.contract_stains for
 create function private.record_contract_stain_history() returns trigger
 language plpgsql security definer set search_path='' as $$
 begin
- if tg_op='INSERT' or new.status is distinct from old.status then
+ if tg_op='INSERT' then
   insert into public.contract_stain_history(stain_id,old_status,new_status,changed_by)
-  values(new.id,case when tg_op='INSERT' then null else old.status end,new.status,(select auth.uid()));
+  values(new.id,null,new.status,(select auth.uid()));
+ elsif new.status is distinct from old.status then
+  insert into public.contract_stain_history(stain_id,old_status,new_status,changed_by)
+  values(new.id,old.status,new.status,(select auth.uid()));
  end if;
  return new;
 end $$;
