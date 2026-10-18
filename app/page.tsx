@@ -3,9 +3,8 @@
 import {useEffect,useState} from 'react';
 import Link from 'next/link';
 import {BarChart3,Building2,CalendarDays,CheckCircle2,ClipboardList,Droplets,FileCheck2,FileText,Landmark,MapPin,Network,Target,TrendingUp,TriangleAlert,Waves} from 'lucide-react';
-import {MainNavigation} from '@/components/MainNavigation';
-import {LogoutButton} from '@/components/LogoutButton';
 import {loadDashboardData,type DashboardData} from '@/lib/dashboard-data';
+import {VitaluxChrome} from '@/components/VitaluxChrome';
 import {createClient} from '@/lib/supabase/client';
 import './approved-dashboard.css';
 
@@ -95,10 +94,7 @@ export default function Dashboard(){
  const netWater=data.engineeringBreakdown?.waterNetwork??null,netSewer=data.engineeringBreakdown?.sewerNetwork??null;
  const projected=ratio(data.annualProjection,data.target);
  const projectedWidth=projected===null?0:Math.max(0,Math.min(100,projected));
- return <div className="va-app">
-  <header className="va-header"><div className="va-wordmark"><div><b>vitalux</b><em>eco</em></div><small>projetos sustentáveis</small></div><div className="va-header-rule"/><div className="va-breadcrumb">Painel Gerencial <span>›</span> <strong>SBON 17B</strong></div><div className="va-header-right"><div className="va-date"><CalendarDays size={20}/><span>Dados de execução<small>{date(data.latestDate)}</small></span></div><div className="va-period"><span>Período<small>{data.targetYear} (ano)</small></span></div><LogoutButton/></div></header>
-  <aside className="va-sidebar"><MainNavigation/><div className="va-sidebar-end"><span className="va-leaf">♧</span><p>Infraestrutura<br/>para um futuro<br/>mais sustentável.</p></div></aside>
-  <main className="va-main">
+ return <VitaluxChrome lastUpdated={data.latestDate} year={data.targetYear}>\n  <main className="va-main">
    <section className="va-top-grid">
     <Kpi icon={FileText} title="VALOR DO CONTRATO" value={currency(data.contractValue)} note="Contrato consolidado"/>
     <Kpi icon={BarChart3} title="FATURADO NO ANO" value={currency(data.billingYtd)} note="Acumulado do exercício"/>
@@ -118,5 +114,5 @@ export default function Dashboard(){
    </section>
    <div className="va-bottom-note"><span>SBON 17B · Informações provenientes dos cadastros e atualizações registrados no sistema</span><Link href="/engenharia">Vitalux Ecoativa · Engenharia</Link></div>
   </main>
- </div>;
+ </VitaluxChrome>;
 }
