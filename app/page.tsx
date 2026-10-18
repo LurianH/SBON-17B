@@ -81,9 +81,9 @@ export default function Dashboard(){
    }
    if(!targets.error&&!stains.error&&targets.data&&stains.data){
     const totals:StainState['totals']={WATER:28,SEWER:74};
-    for(const row of targets.data)if(row.segment_type==='WATER'||row.segment_type==='SEWER')totals[row.segment_type]=Number(row.total_count);
+    for(const row of targets.data){const seg=String(row.segment_type);if(seg==='WATER')totals.WATER=Number(row.total_count);else if(seg==='SEWER')totals.SEWER=Number(row.total_count);}
     const counts:StainState['counts']={WATER:{},SEWER:{}};
-    for(const row of stains.data)if(row.segment_type==='WATER'||row.segment_type==='SEWER')counts[row.segment_type][row.status]=(counts[row.segment_type][row.status]??0)+1;
+    for(const row of stains.data){const seg=String(row.segment_type);const status=String(row.status);if(seg==='WATER')counts.WATER[status]=(counts.WATER[status]??0)+1;else if(seg==='SEWER')counts.SEWER[status]=(counts.SEWER[status]??0)+1;}
     setStainState({totals,counts});
    }
   })();
