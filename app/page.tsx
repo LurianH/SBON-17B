@@ -33,7 +33,7 @@ function GoalRow({system,goal,approved,icon:Icon}:{system:'Água'|'Esgoto';goal:
 }
 type StainState={totals:Record<'WATER'|'SEWER',number>;counts:Record<'WATER'|'SEWER',Record<string,number>>};
 const categoryColors:Record<string,string>={NO_OBJECTION:'#007977',NO_OBJECTION_RESERVATIONS:'#43A68E',IN_PREPARATION:'#FB7707',IN_REVIEW:'#003399',NOT_STARTED:'#B85A00',CANCELLED:'#8A9595',UNCLASSIFIED:'#D7E2E1'};
-const categoryLabels:Record<string,string>={NO_OBJECTION:'Sem objeção',NO_OBJECTION_RESERVATIONS:'Com ressalvas',IN_PREPARATION:'Em elaboração',IN_REVIEW:'Em revisão',NOT_STARTED:'A iniciar',CANCELLED:'Cancelado',UNCLASSIFIED:'Não classificadas'};
+const categoryLabels:Record<string,string>={NO_OBJECTION:'Sem objeção',NO_OBJECTION_RESERVATIONS:'S/Obj. com ressalvas',IN_PREPARATION:'Em elaboração',IN_REVIEW:'Em revisão',NOT_STARTED:'A iniciar',CANCELLED:'Cancelado',UNCLASSIFIED:'Não classificadas'};
 function StatusSystem({system,total,counts}:{system:'Água'|'Esgoto';total:number;counts:Record<string,number>|null}){
  const Icon=system==='Água'?Droplets:Waves;
  const classified=Object.entries(counts??{}).filter(([key])=>key!=='UNCLASSIFIED').reduce((sum,[,quantity])=>sum+quantity,0);
@@ -103,7 +103,7 @@ export default function Dashboard(){
    </section>
    <section className="va-center-grid">
     <article className="va-card va-goals"><PanelTitle icon={Target} title="METAS DO CONTRATO" action={<span className="va-caption-legend">Execução segregada por sistema: pendente</span>}/><GoalRow system="Água" goal={targetWater} approved={engWater} icon={Droplets}/><GoalRow system="Esgoto" goal={targetSewer} approved={engSewer} icon={Waves}/><p className="va-notice-small">A execução cadastrada hoje é consolidada. Não distribuímos as economias executadas entre Água e Esgoto sem o registro de origem.</p></article>
-    <article className="va-card va-status"><PanelTitle icon={CheckCircle2} title="STATUS POR SISTEMA" action={<Link className="va-inline-link" href="/manchas">Atualizar status ↗</Link>}/><div className="va-status-grid"><StatusSystem system="Água" total={stainState?.totals.WATER??28} counts={stainState?.counts.WATER??null}/><StatusSystem system="Esgoto" total={stainState?.totals.SEWER??74} counts={stainState?.counts.SEWER??null}/></div><p className="va-notice-small">Percentuais calculados sobre as manchas contratuais registradas. Registros ausentes permanecem como não classificados; projetos não são contabilizados como manchas.</p></article>
+    <article className="va-card va-status"><PanelTitle icon={CheckCircle2} title="STATUS PROJETOS POR SISTEMA" action={<Link className="va-inline-link" href="/manchas">Atualizar status ↗</Link>}/><div className="va-status-grid"><StatusSystem system="Água" total={stainState?.totals.WATER??28} counts={stainState?.counts.WATER??null}/><StatusSystem system="Esgoto" total={stainState?.totals.SEWER??74} counts={stainState?.counts.SEWER??null}/></div><p className="va-notice-small">Percentuais calculados sobre as manchas contratuais registradas. Registros ausentes permanecem como não classificados; projetos não são contabilizados como manchas.</p></article>
     <Deviation data={data}/>
    </section>
    <section className="va-bottom-grid">
