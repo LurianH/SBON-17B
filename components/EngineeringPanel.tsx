@@ -118,6 +118,13 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
     <LocalizedWorksEngineering role={role} contractId={contractId} projects={projects} initialWorks={localizedWorks} notice={localizedNotice} readOnly={director}/>
     {canEdit && editing && <EngineeringForm key={editing === 'new' ? 'new' : editing.id} project={editing === 'new' ? null : editing} categories={categories} contractId={contractId!} onClose={() => setEditing(null)} onSaved={() => {setEditing(null); setFeedback('Atualização salva. Histórico preservado.');}}/>}
     <EngineeringReviewStatus projects={visible} initial={reviewRows} canEdit={canEdit} onEdit={project=>{setEditing(project);requestAnimationFrame(()=>document.getElementById('engineering-form')?.scrollIntoView({behavior:'smooth'}));}}/>
+    <details className="panel engineering-project-history">
+      <summary>Consultar históricos técnicos dos projetos</summary>
+      {visible.length===0?<p>Não há projetos nos filtros selecionados.</p>:visible.map(p=><div className="engineering-history-item" key={p.id}>
+        <strong>{p.project_name}</strong><small>{p.municipality} · {segments[p.segment_type]}</small>
+        <History projectId={p.id} linear={p.project_category==='WATER_LINEAR'&&p.project_type==='PE'}/>
+      </div>)}
+    </details>
     <div id="engenharia-cidades" className="engineering-section-label"><h2>Projetos por município e mancha</h2></div>
     <section className="engineering-cities" aria-label="Aprovações por cidade">{municipalities.filter(city => !filters.city || filters.city === city).map(city => {
       const cityProjects = visible.filter(p => p.municipality === city);
