@@ -32,13 +32,22 @@ function GoalRow({system,goal,approved,icon:Icon}:{system:'Água'|'Esgoto';goal:
   <div className="va-goal-percent"><strong>—</strong><small>execução por sistema pendente</small></div>
  </div>;
 }
-function StatusSystem({system,total}:{system:'Água'|'Esgoto';total:number}){
+type StainState={totals:Record<'WATER'|'SEWER',number>;counts:Record<'WATER'|'SEWER',Record<string,number>>};
+const categoryColors:Record<string,string>={NO_OBJECTION:'#007977',NO_OBJECTION_RESERVATIONS:'#43A68E',IN_PREPARATION:'#FB7707',IN_REVIEW:'#003399',NOT_STARTED:'#B85A00',CANCELLED:'#8A9595',UNCLASSIFIED:'#D7E2E1'};
+const categoryLabels:Record<string,string>={NO_OBJECTION:'Sem objeção',NO_OBJECTION_RESERVATIONS:'Com ressalvas',IN_PREPARATION:'Em elaboração',IN_REVIEW:'Em revisão',NOT_STARTED:'A iniciar',CANCELLED:'Cancelado',UNCLASSIFIED:'Não classificadas'};
+function StatusSystem({system,total,counts}:{system:'Água'|'Esgoto';total:number;counts:Record<string,number>|null}){
  const Icon=system==='Água'?Droplets:Waves;
+ const classified=Object.entries(counts??{}).filter(([key])=>key!=='UNCLASSIFIED').reduce((sum,[,quantity])=>sum+quantity,0);
+ const unclassified=Math.max(0,total-classified);
+ const steps=Object.keys(categoryColors).map(key=>({key,label:categoryLabels[key],count:key==='UNCLASSIFIED'?unclassified:(counts?.[key]??0),color:categoryColors[key]}));
+ let current=0;
+ const stops=steps.filter(item=>item.count>0).map(item=>{const from=current;current+=total>0?item.count/total*100:0;return item.color+' '+from+'% '+current+'%';});
+ const fill=total>0?'conic-gradient('+stops.join(', ')+')':'#D7E2E1';
  return <div className="va-status-system">
   <div className="va-status-name"><Icon size={22} className={system==='Água'?'va-water':'va-sewer'}/><div><b>{system}</b><small>Total contratual: {total} manchas</small></div></div>
   <div className="va-status-detail">
-   <div className="va-status-donut" role="img" aria-label={total+' manchas de '+system+'; situação de cada mancha ainda não classificada'}><div><small>Total</small><strong>{total}</strong></div></div>
-   <div className="va-status-legend"><div><span><i className="va-dot va-dot-unclassified"/>Sem classificação</span><b>{total} · 100%</b></div><div><span><i className="va-dot va-dot-approved"/>Sem objeção</span><b>—</b></div><div><span><i className="va-dot va-dot-reserved"/>Com ressalvas</span><b>—</b></div><div><span><i className="va-dot va-dot-review"/>Em elaboração/revisão</span><b>—</b></div><div><span><i className="va-dot va-dot-notstarted"/>A iniciar</span><b>—</b></div></div>
+   <div className="va-status-donut" style={{background:fill}} role="img" aria-label={total+' manchas de '+system+'; '+(total-unclassified)+' com status registrado'}><div><small>Total</small><strong>{total}</strong></div></div>
+   <div className="va-status-legend">{steps.map(item=><div key={item.key}><span><i className="va-dot" style={{background:item.color}}/>{item.label}</span><b>{item.count} · {total>0?percentage(item.count/total*100):'—'}</b></div>)}</div>
   </div>
  </div>;
 }
@@ -50,6 +59,7 @@ function Mini({label,value,context}:{label:string,value:string,context?:string})
 export default function Dashboard(){
  const [data,setData]=useState<DashboardData|null>(null);
  const [structures,setStructures]=useState<Structures|null>(null);
+ const [stainState,setStainState]=useState<StainState|null>(null);
  useEffect(()=>{
   let active=true;
   void (async()=>{
@@ -58,11 +68,24 @@ export default function Dashboard(){
    setData(result);
    if(!result.contractId||result.source!=='supabase')return;
    const db=createClient();if(!db)return;
-   const {data:rows,error}=await db.from('engineering_localized_works').select('kind,quantity').eq('contract_id',result.contractId).eq('active',true);
-   if(!active||error||!rows)return;
-   const next={reservoirs:0,boosters:0,eees:0};
-   for(const row of rows){const q=Number(row.quantity)||0;if(row.kind==='RESERVOIR')next.reservoirs+=q;if(row.kind==='BOOSTER')next.boosters+=q;if(row.kind==='EEE')next.eees+=q;}
-   setStructures(next);
+   const [works,targets,stains]=await Promise.all([
+    db.from('engineering_localized_works').select('kind,quantity').eq('contract_id',result.contractId).eq('active',true),
+    db.from('contract_stain_targets').select('segment_type,total_count').eq('contract_id',result.contractId),
+    db.from('contract_stains').select('segment_type,status').eq('contract_id',result.contractId)
+   ]);
+   if(!active)return;
+   if(!works.error&&works.data){
+    const next={reservoirs:0,boosters:0,eees:0};
+    for(const row of works.data){const q=Number(row.quantity)||0;if(row.kind==='RESERVOIR')next.reservoirs+=q;if(row.kind==='BOOSTER')next.boosters+=q;if(row.kind==='EEE')next.eees+=q;}
+    setStructures(next);
+   }
+   if(!targets.error&&!stains.error&&targets.data&&stains.data){
+    const totals:StainState['totals']={WATER:28,SEWER:74};
+    for(const row of targets.data)if(row.segment_type==='WATER'||row.segment_type==='SEWER')totals[row.segment_type]=Number(row.total_count);
+    const counts:StainState['counts']={WATER:{},SEWER:{}};
+    for(const row of stains.data)if(row.segment_type==='WATER'||row.segment_type==='SEWER')counts[row.segment_type][row.status]=(counts[row.segment_type][row.status]??0)+1;
+    setStainState({totals,counts});
+   }
   })();
   return()=>{active=false};
  },[]);
@@ -84,14 +107,14 @@ export default function Dashboard(){
    </section>
    <section className="va-center-grid">
     <article className="va-card va-goals"><PanelTitle icon={Target} title="METAS DO CONTRATO" action={<span className="va-caption-legend">Execução segregada por sistema: pendente</span>}/><GoalRow system="Água" goal={targetWater} approved={engWater} icon={Droplets}/><GoalRow system="Esgoto" goal={targetSewer} approved={engSewer} icon={Waves}/><p className="va-notice-small">A execução cadastrada hoje é consolidada. Não distribuímos as economias executadas entre Água e Esgoto sem o registro de origem.</p></article>
-    <article className="va-card va-status"><PanelTitle icon={CheckCircle2} title="STATUS POR SISTEMA"/><div className="va-status-grid"><StatusSystem system="Água" total={28}/><StatusSystem system="Esgoto" total={74}/></div><p className="va-notice-small">Manchas contratuais: classificação individual ainda não registrada. Os totais 28 e 74 não são os quantitativos de projetos.</p></article>
+    <article className="va-card va-status"><PanelTitle icon={CheckCircle2} title="STATUS POR SISTEMA" action={<Link className="va-inline-link" href="/manchas">Atualizar status ↗</Link>}/><div className="va-status-grid"><StatusSystem system="Água" total={stainState?.totals.WATER??28} counts={stainState?.counts.WATER??null}/><StatusSystem system="Esgoto" total={stainState?.totals.SEWER??74} counts={stainState?.counts.SEWER??null}/></div><p className="va-notice-small">Percentuais calculados sobre as manchas contratuais registradas. Registros ausentes permanecem como não classificados; projetos não são contabilizados como manchas.</p></article>
     <Deviation data={data}/>
    </section>
    <section className="va-bottom-grid">
     <article className="va-card"><PanelTitle icon={FileCheck2} title="ENTREGA DA ENGENHARIA"/><div className="va-two-metrics"><Mini label="Economias aprovadas" value={count(data.available)} context={'Água '+count(engWater)+' · Esgoto '+count(engSewer)}/><Mini label="Rede aprovada" value={km(data.networkApproved)} context={'Água '+km(netWater)+' · Esgoto '+km(netSewer)}/></div><Link className="va-card-action" href="/engenharia">Detalhar Engenharia ↗</Link></article>
     <article className="va-card"><PanelTitle icon={Network} title="EXECUÇÃO REAL"/><div className="va-two-metrics"><Mini label="Economias executadas" value={count(data.executed)} context="Acumulado informado"/><Mini label="Rede executada" value={km(data.networkExecuted)} context="Acumulado informado"/></div><Link className="va-card-action" href="/atualizar">Atualizar execução ↗</Link></article>
     <article className="va-card va-structures"><PanelTitle icon={Building2} title="ESTRUTURAS CADASTRADAS"/><div className="va-structure-rows"><div><Landmark size={17}/><span>Reservatórios</span><b>{structures?count(structures.reservoirs):'—'}</b></div><div><Target size={17}/><span>Boosters</span><b>{structures?count(structures.boosters):'—'}</b></div><div><Network size={17}/><span>EEEs</span><b>{structures?count(structures.eees):'—'}</b></div></div><Link className="va-card-action" href="/engenharia">Abrir obras localizadas ↗</Link></article>
-    <article className="va-card va-distribution"><PanelTitle icon={MapPin} title="DISTRIBUIÇÃO DAS MANCHAS"/><div className="va-distribution-inner"><div><Droplets size={24} className="va-water"/><span>Água</span><strong>28</strong><small>manchas</small></div><div><Waves size={24} className="va-sewer"/><span>Esgoto</span><strong>74</strong><small>manchas</small></div></div><Link className="va-card-action" href="/engenharia">Visualizar por município ↗</Link></article>
+    <article className="va-card va-distribution"><PanelTitle icon={MapPin} title="DISTRIBUIÇÃO DAS MANCHAS"/><div className="va-distribution-inner"><div><Droplets size={24} className="va-water"/><span>Água</span><strong>{stainState?.totals.WATER??28}</strong><small>manchas</small></div><div><Waves size={24} className="va-sewer"/><span>Esgoto</span><strong>{stainState?.totals.SEWER??74}</strong><small>manchas</small></div></div><Link className="va-card-action" href="/engenharia">Visualizar por município ↗</Link></article>
    </section>
    <div className="va-bottom-note"><span>SBON 17B · Informações provenientes dos cadastros e atualizações registrados no sistema</span><Link href="/engenharia">Vitalux Ecoativa · Engenharia</Link></div>
   </main>
