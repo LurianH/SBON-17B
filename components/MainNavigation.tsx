@@ -5,7 +5,7 @@ import {useEffect, useState} from 'react';
 import {canAccessRoute, type AppRole} from '@/lib/authorization';
 import {createClient} from '@/lib/supabase/client';
 
-const links = [['/', 'Dashboard'], ['/engenharia', 'Engenharia'], ['/atualizar', 'Atualização'], ['/analise', 'Análise'], ['/historico', 'Histórico'], ['/admin', 'Administração']];
+const links = [['/', 'Dashboard'], ['/engenharia', 'Engenharia'], ['/manchas', 'Manchas'], ['/atualizar', 'Atualização'], ['/analise', 'Análise'], ['/historico', 'Histórico'], ['/admin', 'Administração']];
 export function MainNavigation() {
   const path = usePathname(), [role, setRole] = useState<AppRole | null>(null);
   useEffect(() => {
