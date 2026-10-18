@@ -3,6 +3,7 @@ import Link from 'next/link';
 import {Building2,CheckCheck,ClipboardCheck,Layers3,MapPinned,Ruler,SquareStack,Warehouse} from 'lucide-react';
 import {summarizeEngineering,type CurrentProject} from '@/lib/engineering';
 import type {LocalizedWorkRow} from '@/lib/localized-works-model';
+import type {ProjectReviewRow} from '@/lib/project-review-status';
 import './engineering-management.css';
 
 type StainSummary={waterTotal:number;sewerTotal:number;waterClassified:number;sewerClassified:number};
@@ -20,8 +21,10 @@ function metricSum(projects:CurrentProject[],field:'approved_length_m'|'pead_de6
 function MeasureLength({value,partial}:{value:number|null;partial:boolean}){
  return <><strong>{value===null?missing:length(value)}</strong>{partial&&<small>Valor parcial: ainda há projetos sem medição</small>}</>;
 }
-export function EngineeringManagementOverview({projects,localizedWorks,stains}:{projects:CurrentProject[];localizedWorks:LocalizedWorkRow[];stains:StainSummary}){
+export function EngineeringManagementOverview({projects,localizedWorks,stains,reviews}:{projects:CurrentProject[];localizedWorks:LocalizedWorkRow[];stains:StainSummary;reviews:ProjectReviewRow[]}){
  const total=summarizeEngineering(projects);
+ const statusByProject=new Map(reviews.map(row=>[row.engineering_project_id,row.status]));
+ const classified=projects.filter(project=>{const status=statusByProject.get(project.id);return status&&status!=='UNCLASSIFIED';}).length;
  const estatica=projects.filter(p=>p.project_category==='STATIC');
  const staticSummary=summarizeEngineering(estatica);
  const water=projects.filter(p=>p.segment_type==='WATER');
@@ -31,9 +34,9 @@ export function EngineeringManagementOverview({projects,localizedWorks,stains}:{
  const sewerKm=metricSum(sewer,'approved_length_m');
  const works=(kind:'RESERVOIR'|'BOOSTER'|'EEE')=>localizedWorks.filter(w=>w.active&&w.kind===kind).reduce((sum,w)=>sum+w.quantity,0);
  return <section className="em-overview" aria-label="Visão gerencial de Engenharia">
-  <div className="em-overview-header"><div><span>PAINEL DE CONTROLE · ENGENHARIA</span><h2>Projetos, aprovação e entregas</h2><p>Resumo baseado exclusivamente nos cadastros atuais do SBON 17B. Os quantitativos detalhados permanecem nas seções abaixo.</p></div><Link href="/manchas">Atualizar status das manchas →</Link></div>
+  <div className="em-overview-header"><div><span>PAINEL DE CONTROLE · ENGENHARIA</span><h2>Projetos, aprovação e entregas</h2><p>Resumo baseado exclusivamente nos cadastros atuais do SBON 17B. Os quantitativos detalhados permanecem nas seções abaixo.</p></div><div className="em-overview-actions"><a href="#engenharia-classificacao">Classificar projetos →</a><Link href="/manchas">Atualizar manchas →</Link></div></div>
   <div className="em-scorecards">
-   <Kpi icon={Layers3} label="Projetos cadastrados" value={number(total.count)} sub="Projetos ativos na Engenharia"/>
+   <Kpi icon={Layers3} label="Projetos cadastrados" value={number(total.count)} sub={number(classified)+' classificados · '+number(total.count-classified)+' pendentes'}/>
    <Kpi icon={CheckCheck} label="Concepções aprovadas" value={number(total.approved)} sub={total.count?number(total.conceptPercent??0)+'% dos projetos ativos':'Sem base de projetos'}/>
    <Kpi icon={ClipboardCheck} label="Executivos finalizados" value={number(total.completed)} sub={total.count?number(total.executivePercent??0)+'% dos projetos ativos':'Sem base de projetos'}/>
    <Kpi icon={Building2} label="Contratada Estática" value={number(estatica.length)} sub="Projetos classificados como Estática"/>
