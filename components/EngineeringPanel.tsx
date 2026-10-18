@@ -52,7 +52,7 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
     {key: 'executive', label: 'Status do executivo', options: Object.entries(executiveLabels)},
   ];
   return <div className="engineering">
-    <div id="engenharia-aprovacoes"><EngineeringManagementOverview projects={visible} localizedWorks={localizedWorks} stains={stainSummary}/></div>
+    <div id="engenharia-aprovacoes"><EngineeringManagementOverview projects={visible} localizedWorks={localizedWorks} stains={stainSummary} reviews={reviewRows}/></div>
     <div className="engineering-toolbar"><p>Projetos aprovados e liberados pela engenharia</p><div>{role !== 'DIRETORIA' && <button onClick={() => {setDirector(!director); setEditing(null);}}>{director ? 'Sair do Modo Diretoria' : 'Modo Diretoria'}</button>}{canEdit && <button onClick={() => setEditing('new')}>Cadastrar projeto</button>}</div></div>
     {notice && <p role="alert" className="engineering-notice">{notice}</p>}
     {feedback && <p role="status" className="engineering-notice">{feedback}</p>}
