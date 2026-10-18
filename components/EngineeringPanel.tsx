@@ -21,11 +21,6 @@ const localDate = () => {const d = new Date(); return `${d.getFullYear()}-${Stri
 function Amount({metric, meters = false}: {metric: {value: number | null; partial: boolean}; meters?: boolean}) {
   return <><strong>{format(metric.value, meters)}</strong>{metric.partial && metric.value !== null && <small>Parcial · há projetos aguardando atualização</small>}</>;
 }
-function StatusKpi({title, projects, executive = false}: {title: string; projects: CurrentProject[]; executive?: boolean}) {
-  const summary = summarizeEngineering(projects), percent = executive ? summary.executivePercent : summary.conceptPercent;
-  return <article className="kpi"><span>{title}</span><strong>{percent === null ? 'Aguardando cadastro' : `${new Intl.NumberFormat('pt-BR', {maximumFractionDigits: 1}).format(percent)}%`}</strong>
-    {percent !== null && <><small>{executive ? summary.completed : summary.approved} de {summary.count} projetos ativos</small><progress max={100} value={percent} aria-label={title}/></>}</article>;
-}
 function SegmentAmounts({projects, title}: {projects: CurrentProject[]; title: string}) {
   const summary = summarizeEngineering(projects);
   return <div className="engineering-segment"><h3>{title}</h3><span>Economias aprovadas</span><Amount metric={summary.economies}/><span>Metragem aprovada</span><Amount metric={summary.length} meters/></div>;
@@ -57,7 +52,7 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
     {key: 'executive', label: 'Status do executivo', options: Object.entries(executiveLabels)},
   ];
   return <div className="engineering">
-    <EngineeringManagementOverview projects={visible} localizedWorks={localizedWorks} stains={stainSummary}/>
+    <div id="engenharia-aprovacoes"><EngineeringManagementOverview projects={visible} localizedWorks={localizedWorks} stains={stainSummary}/></div>
     <div className="engineering-toolbar"><p>Projetos aprovados e liberados pela engenharia</p><div>{role !== 'DIRETORIA' && <button onClick={() => {setDirector(!director); setEditing(null);}}>{director ? 'Sair do Modo Diretoria' : 'Modo Diretoria'}</button>}{canEdit && <button onClick={() => setEditing('new')}>Cadastrar projeto</button>}</div></div>
     {notice && <p role="alert" className="engineering-notice">{notice}</p>}
     {feedback && <p role="status" className="engineering-notice">{feedback}</p>}
@@ -77,13 +72,6 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
       <article><span>Contratada Estática</span><strong>{statics.length}</strong><small>Projetos com categoria Estática no cadastro</small></article>
       <article><span>Obras lineares de Água</span><strong>{linearVisible.length}</strong><small>Projetos com detalhamento por diâmetro</small></article>
       <article><span>Projetos de Engenharia</span><strong>{visible.length}</strong><small>Total exibido conforme filtros</small></article>
-    </section>
-    <div id="engenharia-aprovacoes" className="engineering-section-label"><h2>Aprovações e entregas</h2></div>
-    <section className="engineering-status" aria-label="Evolução dos projetos">
-      <StatusKpi title="Concepção aprovada – Sala de Guerra · Geral" projects={general}/>
-      <StatusKpi title="Projetos executivos finalizados · Geral" projects={general} executive/>
-      <StatusKpi title="Estática – Concepção aprovada Sala de Guerra" projects={statics}/>
-      <StatusKpi title="Estática – Projeto executivo" projects={statics} executive/>
     </section>
     <section id="engenharia-redes" className="panel engineering-totals" aria-label="Consolidação de economias e metragem">
       <SegmentAmounts title="Água" projects={visible.filter(p => p.segment_type === 'WATER')}/><SegmentAmounts title="Esgoto" projects={visible.filter(p => p.segment_type === 'SEWER')}/><SegmentAmounts title="Total" projects={visible}/>
