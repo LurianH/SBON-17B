@@ -27,6 +27,7 @@ export function EngineeringReviewStatus({projects,initial,canEdit,onEdit}:{proje
  const router=useRouter();
  const [values,setValues]=useState<Record<string,ProjectReviewStatus>>(()=>Object.fromEntries(initial.map(x=>[x.engineering_project_id,x.status])) as Record<string,ProjectReviewStatus>);
  const [busy,setBusy]=useState<string|null>(null),[message,setMessage]=useState('');
+ const [statusFilter,setStatusFilter]=useState<ProjectReviewStatus|'ALL'>('ALL');
  const current=(id:string)=>values[id]??'UNCLASSIFIED';
  async function save(project:CurrentProject,status:ProjectReviewStatus){
   if(!canEdit||busy)return;
@@ -45,14 +46,16 @@ export function EngineeringReviewStatus({projects,initial,canEdit,onEdit}:{proje
   const collection=projects.filter(x=>x.segment_type===type);
   return {total:collection.length,done:collection.filter(x=>current(x.id)!=='UNCLASSIFIED').length};
  };
+ const displayed=projects.filter(project=>statusFilter==='ALL'||current(project.id)===statusFilter);
  return <section id="engenharia-classificacao" className="panel er-review" aria-label="Classificação gerencial dos projetos">
   <header className="er-heading"><div><span className="water-linear-eyebrow">CONTROLE POR SISTEMA</span><h2>Classificação dos projetos</h2><p>Classifique cada projeto usando as situações de avaliação. A classificação fica registrada no histórico e não altera aprovação, execução ou metragem.</p></div></header>
   <div className="er-stats">
    {(['WATER','SEWER'] as const).map(type=>{const s=summary(type);return <div key={type}><strong>{segments[type]}</strong><span>{s.done} de {s.total} projetos classificados</span><small>{s.total?Math.round(s.done/s.total*100):0}% dos projetos cadastrados</small></div>})}
   </div>
   <p className="er-disclaimer">Projetos classificados e manchas contratuais são controles distintos. Os percentuais dos gráficos de 28 manchas de Água e 74 de Esgoto continuam vinculados ao cadastro de manchas.</p>
-  {projects.length===0?<p>Nenhum projeto encontrado nos filtros selecionados.</p>:<div className="er-scroll"><table className="er-table"><thead><tr><th>Município</th><th>Sistema</th><th>Projeto / identificação</th><th>Categoria</th><th>Classificação</th><th>Dados e histórico</th></tr></thead><tbody>
-   {projects.map(p=><tr key={p.id}>
+  <div className="er-filter-row"><label htmlFor="er-status-filter">Filtrar projetos por classificação<select id="er-status-filter" value={statusFilter} onChange={e=>setStatusFilter(e.target.value as ProjectReviewStatus|'ALL')}><option value="ALL">Todas as classificações</option>{Object.entries(projectReviewLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label><span>{displayed.length} {displayed.length===1?'projeto exibido':'projetos exibidos'}</span></div>
+  {projects.length===0?<p>Nenhum projeto encontrado nos filtros selecionados.</p>:displayed.length===0?<p>Nenhum projeto corresponde à classificação selecionada.</p>:<div className="er-scroll"><table className="er-table"><thead><tr><th>Município</th><th>Sistema</th><th>Projeto / identificação</th><th>Categoria</th><th>Classificação</th><th>Dados e histórico</th></tr></thead><tbody>
+   {displayed.map(p=><tr key={p.id}>
     <td>{p.municipality}</td><td>{segments[p.segment_type]}</td><td><strong>{p.project_name}</strong></td><td>{p.project_category==='STATIC'?'Estática':p.project_category==='WATER_LINEAR'?'Rede de Água':p.project_category==='GENERAL'?'Geral':p.project_category}</td>
     <td>{canEdit?<select aria-label={'Situação do projeto '+p.project_name} value={current(p.id)} disabled={busy!==null} onChange={e=>void save(p,e.target.value as ProjectReviewStatus)}>{Object.entries(projectReviewLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select>:<span>{projectReviewLabels[current(p.id)]}</span>}</td>
     <td><ReviewHistory projectId={p.id}/>{canEdit&&p.project_category!=='WATER_LINEAR'&&<button type="button" onClick={()=>onEdit(p)}>Atualizar dados técnicos</button>}</td>
