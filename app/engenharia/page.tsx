@@ -44,5 +44,14 @@ export default async function EngineeringPage() {
     try {localizedWorks = await loadLocalizedWorks(db, contract.id);}
     catch {localizedNotice = 'Não foi possível carregar as obras localizadas. Verifique a implantação ou tente novamente.';}
   }
-  return <AppShell title="Engenharia" eyebrow="LIBERAÇÃO DE PROJETOS"><EngineeringPanel projects={projects} updates={updates} categories={categories} role={profile.role} contractId={notice ? null : contract?.id ?? null} notice={notice} localizedWorks={localizedWorks} localizedNotice={localizedNotice}/></AppShell>;
+  const stainSummary={waterTotal:28,sewerTotal:74,waterClassified:0,sewerClassified:0};
+  if(contract&&!notice){
+    const [targets,stains]=await Promise.all([
+      db.from('contract_stain_targets').select('segment_type,total_count').eq('contract_id',contract.id),
+      db.from('contract_stains').select('segment_type,status').eq('contract_id',contract.id)
+    ]);
+    if(!targets.error){for(const item of targets.data??[]){if(item.segment_type==='WATER')stainSummary.waterTotal=Number(item.total_count);if(item.segment_type==='SEWER')stainSummary.sewerTotal=Number(item.total_count);}}
+    if(!stains.error){for(const item of stains.data??[]){if(item.status==='UNCLASSIFIED')continue;if(item.segment_type==='WATER')stainSummary.waterClassified++;if(item.segment_type==='SEWER')stainSummary.sewerClassified++;}}
+  }
+  return <AppShell title="Engenharia" eyebrow="LIBERAÇÃO DE PROJETOS"><EngineeringPanel projects={projects} updates={updates} categories={categories} role={profile.role} contractId={notice ? null : contract?.id ?? null} notice={notice} localizedWorks={localizedWorks} localizedNotice={localizedNotice} stainSummary={stainSummary}/></AppShell>;
 }
