@@ -8,6 +8,7 @@ import {canWriteEngineering, conceptLabels, currentProjects, deliveryLabels, emp
   municipalities, projectSchema, segments, summarizeEngineering, updateSchema,
   type Category, type CurrentProject, type EngineeringFilters, type Project, type Update} from '@/lib/engineering';
 import {EngineeringWaterLinearSection} from '@/components/EngineeringWaterLinearSection';
+import {EngineeringManagementOverview} from '@/components/EngineeringManagementOverview';
 import type {LocalizedWorkRow} from '@/lib/localized-works-model';
 
 const format = (v: number | null, meters = false) => v === null ? 'Aguardando atualização' : new Intl.NumberFormat('pt-BR', {maximumFractionDigits: 3}).format(v) + (meters ? ' m' : '');
@@ -28,9 +29,10 @@ function SegmentAmounts({projects, title}: {projects: CurrentProject[]; title: s
   return <div className="engineering-segment"><h3>{title}</h3><span>Economias aprovadas</span><Amount metric={summary.economies}/><span>Metragem aprovada</span><Amount metric={summary.length} meters/></div>;
 }
 
-export function EngineeringPanel({projects, updates, categories, role, contractId, notice, localizedWorks=[], localizedNotice=''}: {
+export function EngineeringPanel({projects, updates, categories, role, contractId, notice, localizedWorks=[], localizedNotice='', stainSummary={waterTotal:28,sewerTotal:74,waterClassified:0,sewerClassified:0}}: {
   projects: Project[]; updates: Update[]; categories: Category[]; role: string | null; contractId: string | null; notice: string;
   localizedWorks?: LocalizedWorkRow[]; localizedNotice?: string;
+  stainSummary?: {waterTotal:number;sewerTotal:number;waterClassified:number;sewerClassified:number};
 }) {
   const [filters, setFilters] = useState<EngineeringFilters>(emptyFilters);
   const [editing, setEditing] = useState<CurrentProject | 'new' | null>(null);
@@ -52,6 +54,7 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
     {key: 'executive', label: 'Status do executivo', options: Object.entries(executiveLabels)},
   ];
   return <div className="engineering">
+    <EngineeringManagementOverview projects={visible} localizedWorks={localizedWorks} stains={stainSummary}/>
     <div className="engineering-toolbar"><p>Projetos aprovados e liberados pela engenharia</p><div>{role !== 'DIRETORIA' && <button onClick={() => {setDirector(!director); setEditing(null);}}>{director ? 'Sair do Modo Diretoria' : 'Modo Diretoria'}</button>}{canEdit && <button onClick={() => setEditing('new')}>Cadastrar projeto</button>}</div></div>
     {notice && <p role="alert" className="engineering-notice">{notice}</p>}
     {feedback && <p role="status" className="engineering-notice">{feedback}</p>}

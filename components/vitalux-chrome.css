@@ -1,0 +1,8 @@
+.va-app .va-brand-link{display:flex;align-items:center;justify-content:flex-start;width:193px;min-width:193px;height:58px;text-decoration:none}
+.va-app .va-brand-link img{width:185px;height:auto;max-height:55px;object-fit:contain;object-position:left center}
+.va-app .va-internal-main{width:auto;max-width:none;margin:0;min-width:0;grid-area:main;display:block;overflow-x:hidden;padding:22px clamp(12px,2vw,27px) 28px}
+.va-app .va-internal-heading{margin:0 0 20px;padding:3px 0 0}
+.va-app .va-internal-heading h1{font-size:clamp(24px,2.6vw,33px);margin:4px 0 3px;color:#0E4E4C}
+.va-app .va-internal-heading p{margin:0;font-size:13px;color:#5A6463}
+.va-app .va-internal-footer{background:transparent;border-top:1px solid #D7E2E1;margin-top:25px;height:auto;padding:12px 0;color:#5A6463;display:flex;gap:10px;flex-wrap:wrap}
+@media(max-width:720px){.va-app .va-brand-link{min-width:155px;width:155px;height:48px}.va-app .va-brand-link img{width:155px}.va-app .va-internal-main{padding:15px 10px 25px}}

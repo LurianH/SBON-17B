@@ -1,4 +1,10 @@
-import {MainNavigation} from '@/components/MainNavigation';
-import Link from 'next/link';
-import {LogoutButton} from './LogoutButton';
-export function AppShell({title,eyebrow='SBON 17B',children}:{title:string;eyebrow?:string;children:React.ReactNode}){return <div className="app"><header className="topbar"><Link className="brand" href="/"><span className="mark">V</span><span><b>vitalux</b><small>ECOATIVA</small></span></Link><MainNavigation/><div className="header-actions"><LogoutButton/><span className="avatar" aria-label="Usuário">●</span></div></header><main><section className="intro"><div><span className="eyebrow">{eyebrow}</span><h1>{title}</h1></div></section>{children}</main><footer><span>SBON 17B · Vitalux Ecoativa</span><span>Desenvolvido por Lurian Hackenhaar</span></footer></div>}
+import {VitaluxChrome} from '@/components/VitaluxChrome';
+export function AppShell({title,eyebrow='SBON 17B',children}:{title:string;eyebrow?:string;children:React.ReactNode}){
+ return <VitaluxChrome title={title}>
+  <main className="va-main va-internal-main">
+   <section className="va-internal-heading"><span className="eyebrow">{eyebrow}</span><h1>{title}</h1><p>SBON 17B · acompanhamento e gestão do contrato</p></section>
+   {children}
+   <footer className="va-internal-footer"><span>SBON 17B · Vitalux Ecoativa</span><span>Dados e históricos preservados no sistema</span></footer>
+  </main>
+ </VitaluxChrome>;
+}
