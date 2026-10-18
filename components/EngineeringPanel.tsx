@@ -82,6 +82,31 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
       <SegmentAmounts title="Água" projects={visible.filter(p => p.segment_type === 'WATER')}/><SegmentAmounts title="Esgoto" projects={visible.filter(p => p.segment_type === 'SEWER')}/><SegmentAmounts title="Total" projects={visible}/>
     </section>
     {!notice && <EngineeringWaterLinearSection projects={linearVisible} canEdit={canEdit} contractId={contractId} onSaved={() => setFeedback('Atualização de obra linear salva. Histórico preservado.')}/>}
+
+    <section className="panel engineering-sewer-overview" aria-label="Projetos de Esgoto — Obras Lineares">
+      <header className="engineering-sewer-head"><div><span className="water-linear-eyebrow">ACOMPANHAMENTO DE ENTREGAS</span><h2>Projetos de Esgoto — Obras Lineares</h2><p>Consolidado dos projetos de Esgoto já cadastrados, com aprovação e extensão de rede por município. Nenhum quantitativo é estimado.</p></div></header>
+      {(() => {
+        const sewer = visible.filter(project => project.segment_type === 'SEWER');
+        const total = summarizeEngineering(sewer);
+        return <>
+          <div className="engineering-sewer-kpis">
+            <article><span>Projetos de Esgoto</span><strong>{total.count}</strong><small>Projetos ativos nos filtros</small></article>
+            <article><span>Concepções aprovadas</span><strong>{total.approved} / {total.count}</strong><small>{total.conceptPercent === null ? 'Sem projetos cadastrados' : `${total.conceptPercent.toFixed(1).replace('.', ',')}% do total`}</small></article>
+            <article><span>Executivos finalizados</span><strong>{total.completed} / {total.count}</strong><small>{total.executivePercent === null ? 'Sem projetos cadastrados' : `${total.executivePercent.toFixed(1).replace('.', ',')}% do total`}</small></article>
+            <article><span>Metragem aprovada</span><Amount metric={total.length} meters/><small>Sem conversão em economias</small></article>
+          </div>
+          <div className="engineering-sewer-table-wrap"><table>
+            <thead><tr><th>Município</th><th>Projetos</th><th>Concepções aprovadas</th><th>Executivos finalizados</th><th>Rede aprovada</th></tr></thead>
+            <tbody>{municipalities.filter(city => !filters.city || city === filters.city).map(city => {
+              const items=sewer.filter(project => project.municipality === city);
+              const summary=summarizeEngineering(items);
+              return <tr key={city}><th scope="row">{city}</th><td>{summary.count}</td><td>{summary.approved}</td><td>{summary.completed}</td><td>{summary.length.value === null ? 'Aguardando dados' : format(summary.length.value,true)}{summary.length.partial ? ' · parcial' : ''}</td></tr>;
+            })}</tbody>
+          </table></div>
+          <p className="engineering-sewer-context">O detalhamento por mancha permanece nos projetos existentes. A abertura de Esgoto por diâmetro depende do respectivo cadastro técnico; não será inferida da metragem total.</p>
+        </>;
+      })()}
+    </section>
     <div id="engenharia-estruturas" className="engineering-section-label"><h2>Obras localizadas</h2><p>Estruturas existentes, situação técnica, orçamento e histórico permanente.</p></div>
     <LocalizedWorksEngineering role={role} contractId={contractId} projects={projects} initialWorks={localizedWorks} notice={localizedNotice} readOnly={director}/>
     {canEdit && editing && <EngineeringForm key={editing === 'new' ? 'new' : editing.id} project={editing === 'new' ? null : editing} categories={categories} contractId={contractId!} onClose={() => setEditing(null)} onSaved={() => {setEditing(null); setFeedback('Atualização salva. Histórico preservado.');}}/>}
