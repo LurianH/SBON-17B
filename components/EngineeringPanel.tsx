@@ -11,6 +11,7 @@ import {EngineeringWaterLinearSection} from '@/components/EngineeringWaterLinear
 import {EngineeringManagementOverview} from '@/components/EngineeringManagementOverview';
 import {EngineeringReviewStatus} from '@/components/EngineeringReviewStatus';
 import type {ProjectReviewRow} from '@/lib/project-review-status';
+import type {GisProjectRow} from '@/lib/gis-project-model';
 import type {LocalizedWorkRow} from '@/lib/localized-works-model';
 
 const format = (v: number | null, meters = false) => v === null ? 'Aguardando atualização' : new Intl.NumberFormat('pt-BR', {maximumFractionDigits: 3}).format(v) + (meters ? ' m' : '');
@@ -21,16 +22,35 @@ const localDate = () => {const d = new Date(); return `${d.getFullYear()}-${Stri
 function Amount({metric, meters = false}: {metric: {value: number | null; partial: boolean}; meters?: boolean}) {
   return <><strong>{format(metric.value, meters)}</strong>{metric.partial && metric.value !== null && <small>Parcial · há projetos aguardando atualização</small>}</>;
 }
-function SegmentAmounts({projects, title}: {projects: CurrentProject[]; title: string}) {
-  const summary = summarizeEngineering(projects);
-  return <div className="engineering-segment"><h3>{title}</h3><span>Economias aprovadas</span><Amount metric={summary.economies}/><span>Metragem aprovada</span><Amount metric={summary.length} meters/></div>;
+function SegmentAmounts({projects,title,gis}:{projects:CurrentProject[];title:string;gis:GisProjectRow[]}) {
+  const summary=summarizeEngineering(projects);
+  const ids=new Set(projects.map(project=>project.id));
+  const relevant=gis.filter(row=>row.engineering_project_id&&ids.has(row.engineering_project_id)&&!row.cancelled);
+  const metric=(system:'WATER'|'SEWER')=>{
+    const values=relevant.filter(row=>row.segment_type===system);
+    const known=values.map(row=>system==='WATER'?row.economies_ica:row.economies_ice)
+      .filter((value):value is number=>value!==null);
+    return {value:known.length?known.reduce((total,value)=>total+Number(value),0):null,
+      missing:values.length-known.length};
+  };
+  const water=metric('WATER'),sewer=metric('SEWER');
+  const show=(label:string,number:{value:number|null;missing:number})=><>
+    <span>{label}</span><strong>{number.value===null?'Aguardando dados GIS':new Intl.NumberFormat('pt-BR').format(number.value)}</strong>
+    {number.missing>0&&<small>{number.missing} manchas sem quantidade informada · parcial</small>}
+  </>;
+  return <div className="engineering-segment"><h3>{title}</h3>
+    {(title==='Água'||title==='Total')&&show('Economias de Água · GIS',water)}
+    {(title==='Esgoto'||title==='Total')&&show('Economias de Esgoto · GIS',sewer)}
+    <span>Metragem aprovada · dados técnicos da Engenharia</span><Amount metric={summary.length} meters/>
+  </div>;
 }
 
-export function EngineeringPanel({projects, updates, categories, role, contractId, notice, localizedWorks=[], localizedNotice='', stainSummary={waterTotal:28,sewerTotal:74,waterClassified:0,sewerClassified:0}, reviewRows=[]}: {
+export function EngineeringPanel({projects, updates, categories, role, contractId, notice, localizedWorks=[], localizedNotice='', stainSummary={waterTotal:28,sewerTotal:74,waterClassified:0,sewerClassified:0}, reviewRows=[], gisProjects=[]}: {
   projects: Project[]; updates: Update[]; categories: Category[]; role: string | null; contractId: string | null; notice: string;
   localizedWorks?: LocalizedWorkRow[]; localizedNotice?: string;
   stainSummary?: {waterTotal:number;sewerTotal:number;waterClassified:number;sewerClassified:number};
   reviewRows?: ProjectReviewRow[];
+  gisProjects?: GisProjectRow[];
 }) {
   const [filters, setFilters] = useState<EngineeringFilters>(emptyFilters);
   const [editing, setEditing] = useState<CurrentProject | 'new' | null>(null);
@@ -53,7 +73,7 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
   ];
   return <div className="engineering">
     <div id="engenharia-aprovacoes"><EngineeringManagementOverview projects={visible} localizedWorks={localizedWorks} stains={stainSummary} reviews={reviewRows}/></div>
-    <div className="engineering-toolbar"><p>Projetos aprovados e liberados pela engenharia</p><div>{role !== 'DIRETORIA' && <button onClick={() => {setDirector(!director); setEditing(null);}}>{director ? 'Sair do Modo Diretoria' : 'Modo Diretoria'}</button>}{canEdit && <button onClick={() => setEditing('new')}>Cadastrar projeto</button>}</div></div>
+    <div className="engineering-toolbar"><p>Projetos cadastrados por mancha e sistema, com classificação técnica</p><div>{role !== 'DIRETORIA' && <button onClick={() => {setDirector(!director); setEditing(null);}}>{director ? 'Sair do Modo Diretoria' : 'Modo Diretoria'}</button>}{canEdit && <button onClick={() => setEditing('new')}>Cadastrar projeto</button>}</div></div>
     {notice && <p role="alert" className="engineering-notice">{notice}</p>}
     {feedback && <p role="status" className="engineering-notice">{feedback}</p>}
     <section className="panel engineering-filters" aria-label="Filtros de engenharia">{fields.map(f => <label key={f.key}>{f.label}<select value={filters[f.key]} onChange={e => setFilters({...filters, [f.key]: e.target.value})}><option value="">Todos</option>{f.options.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>)}<button onClick={() => setFilters(emptyFilters)}>Limpar filtros</button></section>
@@ -74,20 +94,20 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
       <article><span>Projetos de Engenharia</span><strong>{visible.length}</strong><small>Total exibido conforme filtros</small></article>
     </section>
     <section id="engenharia-redes" className="panel engineering-totals" aria-label="Consolidação de economias e metragem">
-      <SegmentAmounts title="Água" projects={visible.filter(p => p.segment_type === 'WATER')}/><SegmentAmounts title="Esgoto" projects={visible.filter(p => p.segment_type === 'SEWER')}/><SegmentAmounts title="Total" projects={visible}/>
+      <SegmentAmounts title="Água" gis={gisProjects} projects={visible.filter(p => p.segment_type === 'WATER')}/><SegmentAmounts title="Esgoto" gis={gisProjects} projects={visible.filter(p => p.segment_type === 'SEWER')}/><SegmentAmounts title="Total" gis={gisProjects} projects={visible}/>
     </section>
     {!notice && <EngineeringWaterLinearSection projects={linearVisible} canEdit={canEdit} contractId={contractId} onSaved={() => setFeedback('Atualização de obra linear salva. Histórico preservado.')}/>}
 
-    <section className="panel engineering-sewer-overview" aria-label="Projetos de Esgoto — Obras Lineares">
-      <header className="engineering-sewer-head"><div><span className="water-linear-eyebrow">ACOMPANHAMENTO DE ENTREGAS</span><h2>Projetos de Esgoto — Obras Lineares</h2><p>Consolidado dos projetos de Esgoto já cadastrados, com aprovação e extensão de rede por município. Nenhum quantitativo é estimado.</p></div></header>
+    <section className="panel engineering-sewer-overview" aria-label="Projetos de Esgoto — Base GIS e dados técnicos">
+      <header className="engineering-sewer-head"><div><span className="water-linear-eyebrow">ACOMPANHAMENTO DE ENTREGAS</span><h2>Projetos de Esgoto · Cadastro GIS</h2><p>Todos os projetos de Esgoto estão cadastrados por mancha GIS. As economias são exibidas na classificação e nas consolidações; métricas técnicas de aprovação e extensão só aparecem quando cadastradas.</p></div></header>
       {(() => {
         const sewer = visible.filter(project => project.segment_type === 'SEWER');
         const total = summarizeEngineering(sewer);
         return <>
           <div className="engineering-sewer-kpis">
             <article><span>Projetos de Esgoto</span><strong>{total.count}</strong><small>Projetos ativos nos filtros</small></article>
-            <article><span>Concepções aprovadas</span><strong>{total.approved} / {total.count}</strong><small>{total.conceptPercent === null ? 'Sem projetos cadastrados' : `${total.conceptPercent.toFixed(1).replace('.', ',')}% do total`}</small></article>
-            <article><span>Executivos finalizados</span><strong>{total.completed} / {total.count}</strong><small>{total.executivePercent === null ? 'Sem projetos cadastrados' : `${total.executivePercent.toFixed(1).replace('.', ',')}% do total`}</small></article>
+            <article><span>Concepções aprovadas · técnico</span><strong>{sewer.filter(p=>p.current?.concept_status!=null).length?total.approved:'—'}</strong><small>{sewer.filter(p=>p.current?.concept_status!=null).length?'Projetos com situação técnica registrada':'Ainda não informado; status GIS é independente'}</small></article>
+            <article><span>Executivos finalizados · técnico</span><strong>{sewer.filter(p=>p.current?.executive_status!=null).length?total.completed:'—'}</strong><small>{sewer.filter(p=>p.current?.executive_status!=null).length?'Projetos com situação técnica registrada':'Ainda não informado; status GIS é independente'}</small></article>
             <article><span>Metragem aprovada</span><Amount metric={total.length} meters/><small>Sem conversão em economias</small></article>
           </div>
           <div className="engineering-sewer-table-wrap"><table>
@@ -105,7 +125,7 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
     <div id="engenharia-estruturas" className="engineering-section-label"><h2>Obras localizadas</h2><p>Estruturas existentes, situação técnica, orçamento e histórico permanente.</p></div>
     <LocalizedWorksEngineering role={role} contractId={contractId} projects={projects} initialWorks={localizedWorks} notice={localizedNotice} readOnly={director}/>
     {canEdit && editing && <EngineeringForm key={editing === 'new' ? 'new' : editing.id} project={editing === 'new' ? null : editing} categories={categories} contractId={contractId!} onClose={() => setEditing(null)} onSaved={() => {setEditing(null); setFeedback('Atualização salva. Histórico preservado.');}}/>}
-    <EngineeringReviewStatus projects={visible} initial={reviewRows} canEdit={canEdit} onEdit={project=>{setEditing(project);requestAnimationFrame(()=>document.getElementById('engineering-form')?.scrollIntoView({behavior:'smooth'}));}}/>
+    <EngineeringReviewStatus projects={visible} initial={reviewRows} gis={gisProjects} canEdit={canEdit} onEdit={project=>{setEditing(project);requestAnimationFrame(()=>document.getElementById('engineering-form')?.scrollIntoView({behavior:'smooth'}));}}/>
     <details className="panel engineering-project-history">
       <summary>Consultar históricos técnicos dos projetos</summary>
       {visible.length===0?<p>Não há projetos nos filtros selecionados.</p>:visible.map(p=><div className="engineering-history-item" key={p.id}>
@@ -116,7 +136,7 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
     <div id="engenharia-cidades" className="engineering-section-label"><h2>Projetos por município e mancha</h2></div>
     <section className="engineering-cities" aria-label="Aprovações por cidade">{municipalities.filter(city => !filters.city || filters.city === city).map(city => {
       const cityProjects = visible.filter(p => p.municipality === city);
-      return <article className="panel" key={city}><h2>{city}</h2><div className="engineering-city-segments"><SegmentAmounts title="Água" projects={cityProjects.filter(p => p.segment_type === 'WATER')}/><SegmentAmounts title="Esgoto" projects={cityProjects.filter(p => p.segment_type === 'SEWER')}/></div>
+      return <article className="panel" key={city}><h2>{city}</h2><div className="engineering-city-segments"><SegmentAmounts title="Água" gis={gisProjects} projects={cityProjects.filter(p => p.segment_type === 'WATER')}/><SegmentAmounts title="Esgoto" gis={gisProjects} projects={cityProjects.filter(p => p.segment_type === 'SEWER')}/></div>
 
       </article>;
     })}</section>
@@ -166,7 +186,7 @@ function EngineeringForm({project, categories, contractId, onClose, onSaved}: {p
     } catch (error) {setMessage(error instanceof Error ? error.message : 'Não foi possível salvar.');} finally {setBusy(false);}
   }
   return <section id="engineering-form" className="panel engineering-form"><h2>{project ? `Atualizar · ${project.project_name}` : 'Cadastrar projeto'}</h2><p>Informe os valores acumulados deste projeto. Deixe em branco o que ainda não foi informado.</p>{project && <p>{project.municipality} · {segments[project.segment_type]} · {categories.find(c => c.code === project.project_category)?.label}</p>}
-    <form action={submit} className="data-form"><fieldset disabled={busy}><div className="fields">{!project && <><label>Cidade<select name="municipality" required><option value="">Selecione</option>{municipalities.map(c => <option key={c}>{c}</option>)}</select></label><label>Segmento<select name="segment_type" required><option value="">Selecione</option>{Object.entries(segments).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>Categoria<select name="project_category" required>{categories.filter(c => c.code !== 'WATER_LINEAR').map(c => <option key={c.code} value={c.code}>{c.label}</option>)}</select></label><label>Projeto / identificação<input name="project_name" maxLength={200} required/></label></>}
+    <form action={submit} className="data-form"><fieldset disabled={busy}><div className="fields">{!project && <><label>Cidade<select name="municipality" required><option value="">Selecione</option>{municipalities.map(c => <option key={c}>{c}</option>)}</select></label><label>Segmento<select name="segment_type" required><option value="">Selecione</option>{Object.entries(segments).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>Categoria<select name="project_category" required>{categories.filter(c => c.code !== 'WATER_LINEAR' && c.code !== 'GIS').map(c => <option key={c.code} value={c.code}>{c.label}</option>)}</select></label><label>Projeto / identificação<input name="project_name" maxLength={200} required/></label></>}
       <label>Data de referência<input type="date" name="reference_date" value={referenceDate} onChange={e => setReferenceDate(e.target.value)} required/></label>
       <label>Concepção<select name="concept_status" value={concept} onChange={e => setConcept(e.target.value as typeof concept)}>{Object.entries(conceptLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
       {concept === 'APPROVED' && <label>Data da aprovação<input type="date" name="concept_approved_at" max={referenceDate} defaultValue={current?.concept_approved_at ?? ''} required/></label>}
