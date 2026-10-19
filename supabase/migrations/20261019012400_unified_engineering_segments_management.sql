@@ -37,7 +37,7 @@ create table if not exists public.engineering_project_network_segments(
  created_by uuid references auth.users(id),
  updated_by uuid references auth.users(id)
 );
-create unique index if not exists engineering_network_legacy_unique on public.engineering_project_network_segments(engineering_project_id,material,diameter_label) where source='LEGACY';
+create unique index if not exists eng_network_imported_unique on public.engineering_project_network_segments(engineering_project_id,material,diameter_label) where source='LEGACY';
 create index if not exists engineering_network_segments_project on public.engineering_project_network_segments(engineering_project_id,active);
 create table if not exists public.engineering_project_network_segments_history(
  id uuid primary key default gen_random_uuid(),
@@ -58,28 +58,52 @@ revoke all on public.engineering_project_management,public.engineering_project_m
 public.engineering_project_network_segments,public.engineering_project_network_segments_history from public,anon,authenticated;
 grant select,insert,update on public.engineering_project_management,public.engineering_project_network_segments to authenticated;
 grant select on public.engineering_project_management_history,public.engineering_project_network_segments_history to authenticated;
+do $policy$ begin
 create policy management_read on public.engineering_project_management for select to authenticated
 using (private.current_app_role() is not null);
+exception when duplicate_object then null;
+end $policy$;
+do $policy$ begin
 create policy management_write on public.engineering_project_management for insert to authenticated
 with check (private.current_app_role() in ('ADMIN','EDITOR') and exists
   (select 1 from public.engineering_projects p where p.id=engineering_project_id and p.active));
+exception when duplicate_object then null;
+end $policy$;
+do $policy$ begin
 create policy management_edit on public.engineering_project_management for update to authenticated
 using (private.current_app_role() in ('ADMIN','EDITOR'))
 with check (private.current_app_role() in ('ADMIN','EDITOR'));
+exception when duplicate_object then null;
+end $policy$;
+do $policy$ begin
 create policy management_history_read on public.engineering_project_management_history for select to authenticated
 using (private.current_app_role() is not null);
+exception when duplicate_object then null;
+end $policy$;
+do $policy$ begin
 create policy network_read on public.engineering_project_network_segments for select to authenticated
 using (private.current_app_role() is not null);
+exception when duplicate_object then null;
+end $policy$;
+do $policy$ begin
 create policy network_write on public.engineering_project_network_segments for insert to authenticated
 with check (private.current_app_role() in ('ADMIN','EDITOR') and source='MANUAL' and exists
  (select 1 from public.engineering_projects p where p.id=engineering_project_id and p.active));
+exception when duplicate_object then null;
+end $policy$;
+do $policy$ begin
 create policy network_edit on public.engineering_project_network_segments for update to authenticated
 using (private.current_app_role() in ('ADMIN','EDITOR'))
 with check (private.current_app_role() in ('ADMIN','EDITOR'));
+exception when duplicate_object then null;
+end $policy$;
+do $policy$ begin
 create policy network_history_read on public.engineering_project_network_segments_history for select to authenticated
 using (private.current_app_role() is not null);
+exception when duplicate_object then null;
+end $policy$;
 
-create function private.audit_eng_management() returns trigger language plpgsql
+create or replace function private.track_engineering_management() returns trigger language plpgsql
 security definer set search_path='' as $$
 begin
   new.updated_at=clock_timestamp();
@@ -88,10 +112,10 @@ begin
    values(new.engineering_project_id,case when tg_op='UPDATE' then to_jsonb(old) else null end,to_jsonb(new),auth.uid());
   return new;
 end $$;
-create trigger management_track before insert or update on public.engineering_project_management
-for each row execute function private.audit_eng_management();
+create or replace trigger track_engineering_management before insert or update on public.engineering_project_management
+for each row execute function private.track_engineering_management();
 
-create function private.stamp_eng_network() returns trigger language plpgsql
+create or replace function private.stamp_engineering_network() returns trigger language plpgsql
 security definer set search_path='' as $$
 begin
   new.updated_at=clock_timestamp();
@@ -99,17 +123,17 @@ begin
   if tg_op='INSERT' then new.created_by=auth.uid(); end if;
   return new;
 end $$;
-create trigger network_stamp before insert or update on public.engineering_project_network_segments
-for each row execute function private.stamp_eng_network();
-create function private.audit_eng_network() returns trigger language plpgsql
+create or replace trigger stamp_engineering_network before insert or update on public.engineering_project_network_segments
+for each row execute function private.stamp_engineering_network();
+create or replace function private.track_engineering_network() returns trigger language plpgsql
 security definer set search_path='' as $$
 begin
   insert into public.engineering_project_network_segments_history(network_segment_id,engineering_project_id,old_data,new_data,changed_by)
   values(new.id,new.engineering_project_id,case when tg_op='UPDATE' then to_jsonb(old) else null end,to_jsonb(new),auth.uid());
   return new;
 end $$;
-create trigger network_track after insert or update on public.engineering_project_network_segments
-for each row execute function private.audit_eng_network();
+create or replace trigger track_engineering_network after insert or update on public.engineering_project_network_segments
+for each row execute function private.track_engineering_network();
 
 -- Valores históricos aprovados: migrar DE63 e DE110 uma única vez, sem duplicar.
 -- O total de cada projeto continua sendo exatamente o original (13 projetos).
