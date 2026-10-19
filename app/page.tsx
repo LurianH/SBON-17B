@@ -30,13 +30,13 @@ function PanelTitle({icon:Icon,title,action}:{icon:typeof Target,title:string,ac
 function Kpi({icon:Icon,title,value,note}:{icon:typeof Target,title:string,value:string,note:string}){
  return <article className="va-card va-kpi"><div className="va-kpi-title"><Icon size={20}/><h2>{title}</h2></div><strong>{value}</strong><small>{note}</small></article>;
 }
-function GoalRow({system,goal,approved,executedTotal,icon:Icon}:{system:'Água'|'Esgoto';goal:number|null;approved:number|null;executedTotal:number|null;icon:typeof Droplets}){
+function GoalRow({system,goal,approved,missingQuantities=0,executedTotal,icon:Icon}:{system:'Água'|'Esgoto';goal:number|null;approved:number|null;missingQuantities?:number;executedTotal:number|null;icon:typeof Droplets}){
  const executionKnown=executedTotal===0;
  return <div className="va-goal-row">
   <div className="va-goal-system"><Icon size={30} className={system==='Água'?'va-water':'va-sewer'}/><div><b>{system}</b><small>Meta de execução do ano: {goal===null?absence:count(goal)+' economias'}</small></div></div>
   <div className="va-goal-graphic va-double-progress">
    <div className="va-measure"><div className="va-measure-heading"><b>Execução</b><small>{executionKnown?'0%':'Sem segregação por sistema'}</small></div><div className="va-progress" role="progressbar" aria-label={'Execução de '+system} aria-valuemin={0} aria-valuemax={100} aria-valuenow={executionKnown?0:undefined}><span style={{width:'0%',background:'#1879C4'}}/></div><div className="va-goal-numbers"><span>Executadas: <b>{executionKnown?'0':'—'}</b></span><span>A executar: <b>{executionKnown?count(goal):'—'}</b></span></div></div>
-   <div className="va-measure"><div className="va-measure-heading"><b>Projetos / Engenharia</b><small>Meta por sistema e ano ainda não vinculada</small></div><div className="va-progress va-progress-unclassified" role="note" aria-label={"Projetos de "+system+": percentual ainda não classificável"}><span>Percentual em apuração</span></div><div className="va-goal-numbers"><span>Liberadas conhecidas: <b>{count(approved)}</b></span><span>Saldo do marco: <b>—</b></span></div></div>
+   <div className="va-measure"><div className="va-measure-heading"><b>Projetos / Engenharia</b><small>Meta por sistema e ano ainda não vinculada</small></div><div className="va-progress va-progress-unclassified" role="note" aria-label={"Projetos de "+system+": percentual ainda não classificável"}><span>Percentual em apuração</span></div><div className="va-goal-numbers"><span>Liberadas conhecidas: <b>{count(approved)}</b>{missingQuantities>0?' (parcial)':''}</span><span>Saldo do marco: <b>—</b></span></div></div>
   </div>
  </div>;
 }
@@ -133,7 +133,7 @@ export default function Dashboard(){
     <article className="va-card va-goals va-goals-rev">
      <PanelTitle icon={Target} title="METAS DO CONTRATO"/>
      <div className="va-goal-upper">
-      <div className="va-goal-systems"><GoalRow system="Água" goal={targetWater} approved={release?.water.economies.value??null} executedTotal={data.executed} icon={Droplets}/><GoalRow system="Esgoto" goal={targetSewer} approved={release?.sewer.economies.value??null} executedTotal={data.executed} icon={Waves}/></div>
+      <div className="va-goal-systems"><GoalRow system="Água" goal={targetWater} approved={release?.water.economies.value??null} missingQuantities={release?.water.economies.missing??0} executedTotal={data.executed} icon={Droplets}/><GoalRow system="Esgoto" goal={targetSewer} approved={release?.sewer.economies.value??null} missingQuantities={release?.sewer.economies.missing??0} executedTotal={data.executed} icon={Waves}/></div>
       <div className="va-plan-timelines">
  <h3>CRONOGRAMA · METAS DISTINTAS</h3>
  <div className="va-separated-goal">
