@@ -256,3 +256,5 @@
 @media(max-width:750px){.va-goal-upper,.va-plan-lower{grid-template-columns:1fr}.va-plan-years{grid-template-columns:1fr}.va-plan-timeline{grid-template-columns:1fr}}
 
 .va-traffic{display:inline-flex;align-items:center;gap:5px;border-radius:6px;padding:5px 7px;font-size:10px;font-weight:750;font-style:normal}.va-traffic i{width:9px;height:9px;border-radius:50%;flex:0 0 9px}.va-traffic-unknown{background:#EDF1F1;color:#586663}.va-traffic-unknown i{background:#AAB9B7}.va-time-track span{font-variant-numeric:tabular-nums}
+
+.va-time-area{min-width:0}.va-project-progress{height:9px;border-radius:7px;background:#E1EBE9;overflow:hidden;margin:2px 0 5px}.va-project-progress>i{display:block;height:100%;background:#007977;border-radius:7px;min-width:0}.va-project-progress-label{display:block;color:#0E4E4C;font-size:10px;font-weight:700;margin-bottom:15px}.va-time-area .va-time-track{margin-top:8px}
