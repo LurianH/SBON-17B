@@ -71,10 +71,13 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,c
  const managed=(p:CurrentProject)=>controls.get(p.id);
  const delivery=(p:CurrentProject)=>managed(p)?.delivery_status??p.current?.delivery_status??null;
  const onlyAvailable=projects.filter(p=>statusOf(p.id)!=='CANCELLED');
- const totalApproved=recorded(onlyAvailable.filter(p=>released(statusOf(p.id))),'APPROVED');
+ const releasedProjects=onlyAvailable.filter(p=>released(statusOf(p.id)));
+ const totalApproved=recorded(releasedProjects,'APPROVED');
+ const approvedEconomies=(list:CurrentProject[])=>list.reduce((n,p)=>n+(p.current?.approved_economies??0),0);
+ const missingApprovedEconomies=(list:CurrentProject[])=>list.filter(p=>p.current?.approved_economies==null).length;
  const responsibility=(owner:Responsible|null)=>{
   const subset=onlyAvailable.filter(p=>(managed(p)?.responsible??null)===owner);
-  return {count:subset.length,approved:recorded(subset.filter(p=>released(statusOf(p.id))),'APPROVED'),
+  return {count:subset.length,economies:approvedEconomies(subset.filter(p=>released(statusOf(p.id)))),approved:recorded(subset.filter(p=>released(statusOf(p.id))),'APPROVED'),
    projected:recorded(subset,'ALL'),completed:subset.filter(p=>delivery(p)==='COMPLETED').length,
    progress:subset.filter(p=>delivery(p)==='IN_PROGRESS').length,notStarted:subset.filter(p=>delivery(p)==='NOT_STARTED').length,
    noDelivery:subset.filter(p=>delivery(p)==null).length};
@@ -88,7 +91,8 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,c
    projected:recorded(cityProjects,'ALL'),approved:recorded(releasedProjects,'APPROVED'),
    executed:recorded(cityProjects,'EXECUTED'),
    economiesWater:water.reduce((a,p)=>a+(gis.find(g=>g.engineering_project_id===p.id)?.economies_ica??0),0),
-   economiesSewer:sewer.reduce((a,p)=>a+(gis.find(g=>g.engineering_project_id===p.id)?.economies_ice??0),0)};
+   economiesSewer:sewer.reduce((a,p)=>a+(gis.find(g=>g.engineering_project_id===p.id)?.economies_ice??0),0),
+   economiesApproved:approvedEconomies(releasedProjects)};
  });
  async function dbUser(){
   const db=createClient();if(!db)throw Error('Conexão indisponível.');
@@ -174,15 +178,15 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,c
   <div className="eph-heading"><div><span className="water-linear-eyebrow">CADASTRO ÚNICO · ENGENHARIA</span><h2>Projetos, redes e entregas</h2>
    <p>Cada código GIS abre um cadastro com Água e/ou Esgoto. O detalhamento técnico pertence ao projeto e pode ter vários materiais, diâmetros e extensões.</p></div></div>
   <div className="eph-topmetrics">
-   <article><span>Códigos GIS no filtro</span><strong>{allGroups.length}</strong></article>
-   <article><span>Projetos por sistema</span><strong>{projects.length}</strong></article>
-   <article><span>Rede aprovada e liberada</span><strong>{formatKm(totalApproved)}</strong><small>Trechos aprovados/executados com Sem objeção ou ressalvas</small></article>
-   <article><span>Rede projetada cadastrada</span><strong>{formatKm(recorded(onlyAvailable,'ALL'))}</strong><small>Não inclui metragens ainda não informadas</small></article>
+   <article><span>Rede projetada cadastrada</span><strong>{formatKm(recorded(onlyAvailable,'ALL'))}</strong><small>Trechos informados por material e diâmetro</small></article>
+   <article><span>Rede aprovada e liberada</span><strong>{formatKm(totalApproved)}</strong><small>Status Sem objeção ou S/Obj. com ressalvas</small></article>
+   <article><span>Rede executada informada</span><strong>{formatKm(recorded(onlyAvailable,'EXECUTED'))}</strong><small>Somente trechos marcados como executados</small></article>
+   <article><span>Economias técnicas liberadas</span><strong>{fmt(approvedEconomies(releasedProjects))}</strong><small>{missingApprovedEconomies(releasedProjects)?'Parcial · '+missingApprovedEconomies(releasedProjects)+' projetos sem quantidade informada':'Soma de projetos liberados por status'}</small></article>
   </div>
   <div className="eph-split">
    {owners.map(([owner,label])=>{const s=responsibility(owner);return <article key={owner??'none'} className="panel eph-owner">
     <h3>{label}</h3><strong>{s.count} <small>projetos atribuídos</small></strong>
-    <p>Rede projetada: <b>{formatKm(s.projected)}</b></p><p>Rede liberada: <b>{formatKm(s.approved)}</b></p>
+    <p>Economias técnicas liberadas: <b>{fmt(s.economies)}</b></p><p>Rede projetada: <b>{formatKm(s.projected)}</b></p><p>Rede liberada: <b>{formatKm(s.approved)}</b></p>
     <p>Finalizados: {s.completed} · Em andamento: {s.progress}</p>
     <small>A iniciar: {s.notStarted} · Sem entrega informada: {s.noDelivery}</small>
    </article>})}
@@ -192,6 +196,7 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,c
    {citySummary.map(c=><article className="panel" key={c.city}>
     <h4>{c.city}</h4><p><b>{c.count}</b> manchas · <b>{c.water}</b> Água · <b>{c.sewer}</b> Esgoto</p>
     <div><span>Economias estimadas Água / Esgoto</span><b>{fmt(c.economiesWater)} / {fmt(c.economiesSewer)}</b></div>
+    <div><span>Economias técnicas liberadas</span><b>{fmt(c.economiesApproved)}</b></div>
     <div><span>Rede projetada cadastrada</span><b>{formatKm(c.projected)}</b></div>
     <div><span>Rede aprovada e liberada</span><b>{formatKm(c.approved)}</b></div>
     <div><span>Rede executada informada</span><b>{formatKm(c.executed)}</b></div>
