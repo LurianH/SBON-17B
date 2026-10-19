@@ -31,6 +31,40 @@ function NetworkForm({projectId,initial,onSave,busy}:{
   <button type="submit" disabled={busy}>{busy?'Salvando…':initial?'Salvar alterações do trecho':'Adicionar trecho'}</button>
  </form>;
 }
+function ProjectHistory({projectId}:{projectId:string}){
+ const [events,setEvents]=useState<{id:string;kind:string;date:string;description:string}[]|null>(null);
+ const [error,setError]=useState('');
+ async function load(){
+  if(events!==null)return;
+  const db=createClient();if(!db){setError('Conexão indisponível.');return;}
+  const [reviews,manager,segments,technical]=await Promise.all([
+   db.from('engineering_project_review_history').select('id,new_status,changed_at').eq('engineering_project_id',projectId).order('changed_at',{ascending:false}).limit(20),
+   db.from('engineering_project_management_history').select('id,new_data,changed_at').eq('engineering_project_id',projectId).order('changed_at',{ascending:false}).limit(20),
+   db.from('engineering_project_network_segments_history').select('id,new_data,changed_at').eq('engineering_project_id',projectId).order('changed_at',{ascending:false}).limit(30),
+   db.from('engineering_project_updates').select('id,reference_date,created_at').eq('engineering_project_id',projectId).order('created_at',{ascending:false}).limit(20)
+  ]);
+  if([reviews,manager,segments,technical].some(r=>r.error)){setError('Não foi possível carregar todo o histórico.');return;}
+  type Snapshot={responsible?:string|null;delivery_status?:string|null;material?:string;diameter_label?:string;length_m?:number;active?:boolean;segment_status?:string};
+  const summary:typeof events=[];
+  for(const r of reviews.data??[])summary.push({id:'status-'+r.id,kind:'Situação do projeto',date:r.changed_at,
+    description:projectReviewLabels[r.new_status as ProjectReviewStatus]??String(r.new_status)});
+  for(const r of manager.data??[]){const v=r.new_data as Snapshot;summary.push({id:'gestao-'+r.id,kind:'Responsável e entrega',date:r.changed_at,
+    description:(v.responsible==='VITALUX'?'Vitalux':v.responsible==='ESTATICA'?'Estática':'Não atribuído')+
+      ' · '+(deliveryNames[v.delivery_status as Delivery]??'Entrega não informada')});}
+  for(const r of segments.data??[]){const v=r.new_data as Snapshot;summary.push({id:'trecho-'+r.id,kind:'Composição da rede',date:r.changed_at,
+    description:(v.material??'')+' '+(v.diameter_label??'')+' · '+fmt(Number(v.length_m??0))+' m · '+(v.active===false?'Desativado':segmentNames[v.segment_status as SegmentStatus]??'Atualizado')});}
+  for(const r of technical.data??[])summary.push({id:'tecnico-'+r.id,kind:'Lançamento técnico',date:r.created_at,
+    description:'Referência '+new Date(r.reference_date+'T12:00:00').toLocaleDateString('pt-BR')});
+  summary.sort((a,b)=>b.date.localeCompare(a.date));
+  setEvents(summary.slice(0,60));
+ }
+ return <details className="eph-history" onToggle={e=>{if(e.currentTarget.open)void load()}}>
+  <summary>Consultar histórico de alterações do projeto</summary>
+  {error&&<p role="alert">{error}</p>}
+  {events?.length===0&&<p>Nenhuma alteração registrada.</p>}
+  {events?.map(ev=><div key={ev.id}><strong>{ev.kind}</strong><span>{ev.description}</span><small>{new Date(ev.date).toLocaleString('pt-BR')}</small></div>)}
+ </details>;
+}
 export function EngineeringProjectHub({projects,gis,reviews,management,network,canEdit}:{
  projects:CurrentProject[];gis:GisProjectRow[];reviews:ProjectReviewRow[];
  management:ProjectManagementRow[];network:ProjectNetworkRow[];canEdit:boolean;
@@ -269,6 +303,7 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,c
         </details>)}</div>:<p>Nenhum trecho informado. A metragem não será estimada automaticamente.</p>}
         {canEdit&&!record.cancelled&&<details className="eph-add"><summary>+ Adicionar material, diâmetro e extensão</summary><NetworkForm projectId={p.id} onSave={saveSegment} busy={busy}/></details>}
        </div>
+       <ProjectHistory projectId={p.id}/>
       </div>;
      })}
     </div>}
