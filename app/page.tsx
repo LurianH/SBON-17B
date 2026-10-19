@@ -129,7 +129,7 @@ export default function Dashboard(){
       <div className="va-plan-timelines">
        <h3>CRONOGRAMA DO CONTRATO</h3>
        <div className="va-plan-timeline"><div><b>Execução contratual</b><small>Meta do contrato: {count(officialContractTotal)} economias · até 2028</small></div><div className="va-time-track"><span>2026 · {count(annualGoal(2026))}</span><span>2027 · {count(annualGoal(2027))}</span><span>2028 · {count(annualGoal(2028))}</span></div></div>
-       <div className="va-plan-timeline"><div><b>Projetos / manchas</b><small>Entregar projetos equivalentes a 14.421 economias até 31/05/2027 · {releasedStains===null?'situação pendente':count(releasedStains)+' de '+count(totalStains)+' manchas liberadas'}</small></div><div className="va-time-track va-time-project"><span>2026</span><span>início 2027</span><span>31/05/2027</span></div></div>
+       <div className="va-plan-timeline"><div><b>Projetos / manchas</b><small>Meta da Engenharia: {count(officialContractTotal)} economias em projetos liberados até 31/05/2027</small><small className="va-project-delivery">Liberadas: {count(releasedEconomies)} economias{withoutEconomies>0?" (parcial — "+withoutEconomies+" mancha(s) sem quantitativo)":""} · {releasedStains===null?"Manchas: em apuração":count(releasedStains)+" de "+count(totalStains)+" manchas liberadas"}</small></div><div className="va-time-track va-time-project"><span>2026</span><span>início 2027</span><span>31/05/2027</span></div></div>
       </div>
      </div>
      <div className="va-plan-lower">
