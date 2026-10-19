@@ -277,3 +277,29 @@
 .va-separated-goal{padding:12px 0;border-bottom:1px solid #D7E2E1}.va-separated-goal:last-child{border-bottom:0}.va-separated-goal>b{display:block;font-size:12px;color:#123149;margin-bottom:5px}.va-separated-goal>small{display:block;font-size:10px;line-height:1.45;color:#5A6463;margin:6px 0 12px}.va-separated-goal .va-time-track{margin:18px 0 17px}.va-separate-summary{display:flex;justify-content:space-between;flex-wrap:wrap;gap:7px;font-size:10px;color:#5A6463;margin-top:8px}.va-separate-summary b{color:#123149}
 
 .va-progress-unclassified{display:flex;align-items:center;justify-content:center;min-height:20px;height:auto;background:repeating-linear-gradient(135deg,#edf2f2,#edf2f2 8px,#e0e9e8 8px,#e0e9e8 16px);border:1px dashed #a9b9b6;border-radius:7px;color:#536966;font-size:10px;font-weight:600}.va-progress-unclassified>span{width:auto!important;height:auto!important;background:none!important}
+
+/* Cronograma executivo compacto: apenas os blocos solicitados */
+.va-timeline-executive{padding:10px 12px!important}
+.va-exec-lane{background:#f8fbfa;border:1px solid #e1eae8;border-radius:9px;padding:10px 12px;margin-top:9px;min-width:0}
+.va-exec-lane>b{display:block;font-size:12px;color:#123149}
+.va-exec-lane>b small{font-weight:500;color:#657573;font-size:10px}
+.va-exec-milestones{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));position:relative;margin:15px 5px 0;align-items:center}
+.va-exec-milestones:before{content:"";height:2px;background:#cbdedb;position:absolute;top:27px;left:12%;right:12%}
+.va-exec-milestones>div{display:flex;align-items:center;flex-direction:column;min-width:0;gap:4px;position:relative}
+.va-exec-milestones strong{font-size:13px;color:#123149}
+.va-exec-milestones small{font-size:10px;color:#597371;text-align:center}
+.va-lane-point{display:block;width:14px;height:14px;border:2px solid #008b88;background:#fff;border-radius:100%;z-index:1}
+.va-point-current{background:#008b88}
+.va-engineering-milestones{grid-template-columns:repeat(4,minmax(0,1fr))}
+.va-engineering-milestones:before{left:9%;right:9%}
+.va-exec-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:10px}
+.va-exec-kpis>div{border:1px solid #dfeae8;border-radius:8px;padding:9px 7px;display:flex;flex-direction:column;gap:3px;background:#fff}
+.va-exec-kpis small{font-size:9px;font-weight:750;color:#075d59}
+.va-exec-kpis b{font-size:13px;color:#123149;white-space:nowrap}
+.va-exec-kpis span{font-size:9px;color:#6b7e7b}
+.va-plan-lower-executive .va-plan-years strong{font-size:13px;color:#123149}
+.va-plan-lower-executive .va-plan-years strong small{font-size:9px;font-weight:400}
+.va-plan-lower-executive .va-mini-track{height:7px;border-radius:12px;background:#e3edeb;margin:4px 0}
+.va-plan-lower-executive .va-plan-assessment h3{margin-bottom:10px}
+.va-plan-lower-executive .va-plan-years>div{gap:7px}
+@media(max-width:900px){.va-exec-kpis{grid-template-columns:1fr}.va-exec-kpis>div{flex-direction:row;justify-content:space-between}.va-exec-milestones strong{font-size:11px}.va-exec-milestones small{font-size:9px}}
