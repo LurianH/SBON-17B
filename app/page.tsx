@@ -116,14 +116,15 @@ export default function Dashboard(){
  const releasedStains=stainState?(['WATER','SEWER'] as const).reduce((sum,system)=>sum+(stainState.counts[system].NO_OBJECTION??0)+(stainState.counts[system].NO_OBJECTION_RESERVATIONS??0),0):null;
  const totalStains=stainState?stainState.totals.WATER+stainState.totals.SEWER:null;
  const annualGoal=(year:number)=>{const dbTotal=annualTargets.find(row=>row.year===year)?.total;return dbTotal&&dbTotal>0?dbTotal:officialAnnualTargets[year]??null};
- const projected=ratio(data.annualProjection,data.target);
+ const currentYearGoal=annualGoal(data.targetYear);
+ const projected=ratio(data.annualProjection,currentYearGoal);
  const projectedWidth=projected===null?0:Math.max(0,Math.min(100,projected));
  return <VitaluxChrome lastUpdated={data.latestDate} year={data.targetYear}>
   <main className="va-main">
    <section className="va-top-grid">
     <Kpi icon={FileText} title="VALOR DO CONTRATO" value={currency(data.contractValue)} note="Contrato consolidado"/>
     <Kpi icon={BarChart3} title="FATURADO NO ANO" value={currency(data.billingYtd)} note="Acumulado do exercício"/>
-    <Kpi icon={Target} title={'META '+data.targetYear} value={data.target===null?'Em apuração':count(data.target)+' economias'} note={'Água '+count(targetWater)+' · Esgoto '+count(targetSewer)}/>
+    <Kpi icon={Target} title={'META '+data.targetYear} value={currentYearGoal===null?'Em apuração':count(currentYearGoal)+' economias'} note={'Água '+count(targetWater)+' · Esgoto '+count(targetSewer)}/>
     <article className="va-card va-projection"><PanelTitle icon={TrendingUp} title="PROJEÇÃO ANUAL"/><div className="va-projection-inner"><div className="va-half-gauge" style={{'--gauge':projectedWidth/2+'%'} as React.CSSProperties}><div><b>{percentage(projected)}</b><small>{projected===null?'Em apuração':'da meta anual'}</small></div></div><p>{projected!==null?'Projeção calculada pela produtividade observada, normalizada por dias de acompanhamento.':data.executed===0&&data.networkExecuted!==null&&data.networkExecuted>0?'Rede executada: '+count(data.networkExecuted,3)+' m. Ainda são 0 economias executadas; não há produtividade de economias para extrapolar a meta anual.':'Projeção aguardando pelo menos três registros ao longo de 14 dias, com avanço positivo e consistente de economias executadas.'}</p></div></article>
    </section>
    <section className="va-center-grid">
@@ -137,7 +138,7 @@ export default function Dashboard(){
   <b>1 · Execução física contratual</b>
   <small>Meta física contratual: {count(officialContractTotal)} economias até 2028, distribuídas por ano.</small>
   <div className="va-time-track"><span>2026 · {count(annualGoal(2026))}</span><span>2027 · {count(annualGoal(2027))}</span><span>2028 · {count(annualGoal(2028))}</span></div>
-  <div className="va-separate-summary"><span>Executadas em {data.targetYear}: <b>{count(data.executed)}</b></span><span>Saldo da meta anual: <b>{data.executed===null||data.target===null?'—':count(Math.max(0,data.target-data.executed))}</b></span></div>
+  <div className="va-separate-summary"><span>Executadas em {data.targetYear}: <b>{count(data.executed)}</b></span><span>Saldo da meta anual: <b>{data.executed===null||currentYearGoal===null?'—':count(Math.max(0,currentYearGoal-data.executed))}</b></span></div>
   <small>Ritmo físico: {data.annualProjection===null?'aguardando série suficiente de economias executadas':count(data.annualProjection)+' economias projetadas para '+data.targetYear}. Os registros são do ano corrente; não representam automaticamente o acumulado dos três anos.</small>
  </div>
  <div className="va-separated-goal">
