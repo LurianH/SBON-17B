@@ -96,15 +96,14 @@ export function GisRegistry({rows,role}:{rows:GisSystemRow[];role:string}) {
   <section className="panel gis-economies">
    <h2>Economias da base GIS</h2>
    <div className="gis-economy-grid">
-    <div><span>Água · ICA (escopo vigente)</span><strong>{number(economySum('economies_ica',false))}</strong><small>{missing('economies_ica')} manchas de Água sem ICA · parcial</small></div>
-    <div><span>Esgoto · ICE (escopo vigente)</span><strong>{number(economySum('economies_ice',false))}</strong><small>{missing('economies_ice')} manchas de Esgoto sem ICE · parcial</small></div>
-    <div><span>Esgoto · IEC (escopo vigente)</span><strong>{number(economySum('economies_iec',false))}</strong><small>Indicador separado, não adicionado ao ICE</small></div>
+    <div><span>Economias de Água · escopo vigente</span><strong>{number(economySum('economies_ica',false))}</strong><small>{missing('economies_ica')} manchas de Água sem quantidade informada · total parcial</small></div>
+    <div><span>Economias de Esgoto · escopo vigente</span><strong>{number(economySum('economies_ice',false))}</strong><small>{missing('economies_ice')} manchas de Esgoto sem quantidade informada · total parcial</small></div>
    </div>
-   <p className="gis-context">As duas manchas canceladas permanecem no catálogo e representam {number(economySum('economies_ica',true)-economySum('economies_ica',false))} ICA e {number(economySum('economies_ice',true)-economySum('economies_ice',false))} ICE, fora dos totais de escopo vigente acima. Os valores anuais de meta permanecem independentes desta base GIS e não foram substituídos.</p>
+   <p className="gis-context">As duas manchas canceladas permanecem no catálogo e representam {number(economySum('economies_ica',true)-economySum('economies_ica',false))} economias de Água e {number(economySum('economies_ice',true)-economySum('economies_ice',false))} economias de Esgoto, fora dos totais de escopo vigente acima. Os valores anuais de meta permanecem independentes desta base GIS e não foram substituídos.</p>
   </section>
   <section className="panel gis-cities">
    <h2>Distribuição por município</h2>
-   <div className="gis-scroll"><table><thead><tr><th>Município</th><th>Água</th><th>Esgoto</th><th>ICA vigente</th><th>ICE vigente</th></tr></thead><tbody>
+   <div className="gis-scroll"><table><thead><tr><th>Município</th><th>Água</th><th>Esgoto</th><th>Economias de Água</th><th>Economias de Esgoto</th></tr></thead><tbody>
     {byCity.map(x=><tr key={x.municipality}><th>{x.municipality}</th><td>{x.water}</td><td>{x.sewer}</td><td>{number(x.ica)}{x.waterMissing?' · parcial':''}</td><td>{number(x.ice)}{x.sewerMissing?' · parcial':''}</td></tr>)}
    </tbody></table></div>
   </section>
@@ -117,10 +116,10 @@ export function GisRegistry({rows,role}:{rows:GisSystemRow[];role:string}) {
     <label>Buscar código ou bairro<input value={keyword} onChange={e=>setKeyword(e.target.value)} placeholder="Código GIS, bairro ou projeto"/></label>
    </div>
    <p className="gis-count">{filtered.length} manchas exibidas de {current.length} do sistema selecionado</p>
-   <div className="gis-scroll"><table><thead><tr><th>GIS / Bairro</th><th>Município</th><th>Recorte</th><th>ICA</th><th>ICE</th><th>IEC</th><th>Status da aprovação</th></tr></thead><tbody>
+   <div className="gis-scroll"><table><thead><tr><th>GIS / Bairro</th><th>Município</th><th>Recorte</th><th>Economias de Água</th><th>Economias de Esgoto</th><th>Status da aprovação</th></tr></thead><tbody>
     {filtered.map(row=><tr key={row.id+row.segment_type}>
      <td><strong>{row.gis_code}</strong><small>{row.neighborhood||'Bairro não informado'}</small>{row.source_sheet==='Planilha2'&&<small className="gis-tag">Nova</small>}</td>
-     <td>{row.municipality}</td><td>{row.settlement_type??'—'}</td><td>{amount(row.economies_ica)}</td><td>{amount(row.economies_ice)}</td><td>{amount(row.economies_iec)}</td>
+     <td>{row.municipality}</td><td>{row.settlement_type??'—'}</td><td>{amount(row.economies_ica)}</td><td>{amount(row.economies_ice)}</td>
      <td className="gis-status-cell">{row.cancelled?<strong className="gis-cancelled">Cancelado</strong>
       :row.segment_type==='WATER'&&row.engineering_project_id?<div><strong>{labels[row.effective_status]}</strong><Link href="/engenharia#engenharia-classificacao">Editar na Engenharia →</Link></div>
       :editable?<select aria-label={'Status GIS '+row.gis_code+' '+row.segment_type} value={row.effective_status} disabled={busy!==null} onChange={e=>void save(row,e.target.value as Status)}>{Object.entries(labels).map(([key,value])=><option key={key} value={key}>{value}</option>)}</select>
