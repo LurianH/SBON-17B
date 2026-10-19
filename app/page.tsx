@@ -63,6 +63,7 @@ export default function Dashboard(){
  const [data,setData]=useState<DashboardData|null>(null);
  const [structures,setStructures]=useState<Structures|null>(null);
  const [stainState,setStainState]=useState<StainState|null>(null);
+ const [annualTargets,setAnnualTargets]=useState<{year:number;total:number}[]>([]);
  useEffect(()=>{
   let active=true;
   void (async()=>{
@@ -71,11 +72,13 @@ export default function Dashboard(){
    setData(result);
    if(!result.contractId||result.source!=='supabase')return;
    const db=createClient();if(!db)return;
-   const [works,targets,stains]=await Promise.all([
+   const [works,targets,stains,annual]=await Promise.all([
     db.from('engineering_localized_works').select('kind,quantity').eq('contract_id',result.contractId).eq('active',true),
     db.from('contract_stain_targets').select('segment_type,total_count').eq('contract_id',result.contractId),
-    db.from('gis_stain_system_effective').select('segment_type,effective_status').eq('contract_id',result.contractId)
+    db.from('gis_stain_system_effective').select('segment_type,effective_status').eq('contract_id',result.contractId),
+    db.from('annual_targets').select('year,target_economies').eq('contract_id',result.contractId).gte('year',2026).lte('year',2028).order('year')
    ]);
+   if(!annual.error&&annual.data)setAnnualTargets(annual.data.map(row=>({year:Number(row.year),total:Number(row.target_economies)})));
    if(!active)return;
    if(!works.error&&works.data){
     const next={reservoirs:0,boosters:0,eees:0};
@@ -112,9 +115,23 @@ export default function Dashboard(){
     <article className="va-card va-projection"><PanelTitle icon={TrendingUp} title="PROJEÇÃO ANUAL"/><div className="va-projection-inner"><div className="va-half-gauge" style={{'--gauge':projectedWidth/2+'%'} as React.CSSProperties}><div><b>{percentage(projected)}</b><small>{projected===null?'Em apuração':'da meta anual'}</small></div></div><p>{projected!==null?'Projeção calculada pela produtividade observada, normalizada por dias de acompanhamento.':data.executed===0&&data.networkExecuted!==null&&data.networkExecuted>0?'Rede executada: '+count(data.networkExecuted,3)+' m. Ainda são 0 economias executadas; não há produtividade de economias para extrapolar a meta anual.':'Projeção aguardando pelo menos três registros ao longo de 14 dias, com avanço positivo e consistente de economias executadas.'}</p></div></article>
    </section>
    <section className="va-center-grid">
-    <article className="va-card va-goals"><PanelTitle icon={Target} title="METAS DO CONTRATO" action={<span className="va-caption-legend">Execução segregada por sistema: pendente</span>}/><GoalRow system="Água" goal={targetWater} approved={engWater} icon={Droplets}/><GoalRow system="Esgoto" goal={targetSewer} approved={engSewer} icon={Waves}/><p className="va-notice-small">A execução cadastrada hoje é consolidada. Não distribuímos as economias executadas entre Água e Esgoto sem o registro de origem.</p></article>
-    <article className="va-card va-status"><PanelTitle icon={CheckCircle2} title="STATUS PROJETOS POR SISTEMA" action={<Link className="va-inline-link" href="/engenharia#engenharia-classificacao">Atualizar status ↗</Link>}/><div className="va-status-grid"><StatusSystem system="Água" total={stainState?.totals.WATER??38} counts={stainState?.counts.WATER??null}/><StatusSystem system="Esgoto" total={stainState?.totals.SEWER??84} counts={stainState?.counts.SEWER??null}/></div><p className="va-notice-small">Uma mancha corresponde a um projeto por sistema: a classificação da Engenharia é refletida aqui. Projetos sem avaliação permanecem como não classificados.</p></article>
-    <Deviation data={data}/>
+    <article className="va-card va-goals va-goals-rev">
+     <PanelTitle icon={Target} title="METAS DO CONTRATO"/>
+     <div className="va-goal-upper">
+      <div className="va-goal-systems"><GoalRow system="Água" goal={targetWater} approved={engWater} icon={Droplets}/><GoalRow system="Esgoto" goal={targetSewer} approved={engSewer} icon={Waves}/></div>
+      <div className="va-plan-timelines">
+       <h3>CRONOGRAMA DO CONTRATO</h3>
+       <div className="va-plan-timeline"><div><b>Execução contratual</b><small>Metas anuais de economias · até 2028</small></div><div className="va-time-track"><span>2026</span><span>2027</span><span>2028</span></div></div>
+       <div className="va-plan-timeline"><div><b>Projetos / manchas</b><small>Conclusão dos projetos até 31/05/2027</small></div><div className="va-time-track va-time-project"><span>2026</span><span>mai/2027</span><span>2028</span></div></div>
+      </div>
+     </div>
+     <div className="va-plan-lower">
+      <div className="va-plan-assessment"><h3>LEITURA DO CRONOGRAMA E DO ATAQUE DAS MANCHAS</h3><p>Aderência das frentes à meta anual</p><div className="va-plan-years">{[2026,2027,2028].map(year=><div key={year}><b>{year}</b><span>Meta: {count(annualTargets.find(row=>row.year===year)?.total??null)} economias</span><small>Manchas em ataque: aguardando enquadramento por ano</small><em>Aderência em apuração</em></div>)}</div></div>
+      <div className="va-plan-targets"><h3>METAS POR ANO</h3>{[2026,2027,2028].map(year=><div key={year}><span>{year}</span><b>{count(annualTargets.find(row=>row.year===year)?.total??null)}</b></div>)}<div className="va-plan-total"><span>Total</span><b>{annualTargets.length===3?count(annualTargets.reduce((sum,row)=>sum+row.total,0)): '—'}</b></div><small>Economias · execução contratual</small></div>
+     </div>
+     <p className="va-notice-small">A execução por sistema permanece pendente enquanto não houver origem segregada. Aderência depende das economias das manchas vinculadas ao respectivo ano, sem estimar percentuais.</p>
+    </article>
+    <article className="va-card va-status"><PanelTitle icon={CheckCircle2} title="STATUS DAS MANCHAS POR SISTEMA" action={<Link className="va-inline-link" href="/engenharia#engenharia-classificacao">Atualizar status ↗</Link>}/><div className="va-status-grid"><StatusSystem system="Água" total={stainState?.totals.WATER??38} counts={stainState?.counts.WATER??null}/><StatusSystem system="Esgoto" total={stainState?.totals.SEWER??84} counts={stainState?.counts.SEWER??null}/></div><p className="va-notice-small">Uma mancha corresponde a um projeto por sistema: a classificação da Engenharia é refletida aqui. Projetos sem avaliação permanecem como não classificados.</p></article>
    </section>
    <section className="va-bottom-grid">
     <article className="va-card"><PanelTitle icon={FileCheck2} title="ENTREGA DA ENGENHARIA"/><p className="va-notice-small">Liberados para execução: <b>{release?.projects??'—'} projetos</b> (Sem objeção + S/Obj. com ressalvas). {partialRelease?'Totais conhecidos parciais; ainda há projetos liberados sem quantitativos técnicos.':'Quantitativos técnicos dos projetos liberados.'}</p><div className="va-two-metrics"><Mini label={'Economias liberadas'+(withoutEconomies?' · parcial':'')} value={count(releasedEconomies)} context={'Água '+count(release?.water.economies.value??null)+' · Esgoto '+count(release?.sewer.economies.value??null)}/><Mini label={'Rede liberada'+(withoutNetwork?' · parcial':'')} value={km(releasedNetwork)} context={'Água '+km(release?.water.network.value??null)+' · Esgoto '+km(release?.sewer.network.value??null)}/></div>{partialRelease&&<p className="va-notice-small">Pendente: {withoutEconomies} projeto(s) sem economias técnicas e {withoutNetwork} sem metragem de rede. O total apresentado não inclui esses valores ausentes.</p>}<Link className="va-card-action" href="/engenharia">Detalhar Engenharia ↗</Link></article>
