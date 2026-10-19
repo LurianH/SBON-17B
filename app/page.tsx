@@ -31,14 +31,12 @@ function Kpi({icon:Icon,title,value,note}:{icon:typeof Target,title:string,value
  return <article className="va-card va-kpi"><div className="va-kpi-title"><Icon size={20}/><h2>{title}</h2></div><strong>{value}</strong><small>{note}</small></article>;
 }
 function GoalRow({system,goal,approved,executedTotal,icon:Icon}:{system:'Água'|'Esgoto';goal:number|null;approved:number|null;executedTotal:number|null;icon:typeof Droplets}){
- const engineeringRatio=ratio(approved,goal);
  const executionKnown=executedTotal===0;
- const projectBalance=goal!==null&&approved!==null?Math.max(0,goal-approved):null;
  return <div className="va-goal-row">
   <div className="va-goal-system"><Icon size={30} className={system==='Água'?'va-water':'va-sewer'}/><div><b>{system}</b><small>Meta: {goal===null?absence:count(goal)+' economias'}</small></div></div>
   <div className="va-goal-graphic va-double-progress">
    <div className="va-measure"><div className="va-measure-heading"><b>Execução</b><small>{executionKnown?'0%':'Sem segregação por sistema'}</small></div><div className="va-progress" role="progressbar" aria-label={'Execução de '+system} aria-valuemin={0} aria-valuemax={100} aria-valuenow={executionKnown?0:undefined}><span style={{width:'0%',background:'#1879C4'}}/></div><div className="va-goal-numbers"><span>Executadas: <b>{executionKnown?'0':'—'}</b></span><span>A executar: <b>{executionKnown?count(goal):'—'}</b></span></div></div>
-   <div className="va-measure"><div className="va-measure-heading"><b>Projetos / Engenharia</b><small>{engineeringRatio===null?'Aguardando quantitativos':percentage(engineeringRatio)+' da meta'}</small></div><div className="va-progress" role="progressbar" aria-label={'Projetos liberados '+system} aria-valuemin={0} aria-valuemax={100} aria-valuenow={engineeringRatio===null?undefined:Math.min(100,Math.max(0,engineeringRatio))}><span style={{width:engineeringRatio===null?'0%':Math.min(100,Math.max(0,engineeringRatio))+'%',background:'#007977'}}/></div><div className="va-goal-numbers"><span>Liberadas: <b>{count(approved)}</b></span><span>Saldo não comprovado: <b>{count(projectBalance)}</b></span></div></div>
+   <div className="va-measure"><div className="va-measure-heading"><b>Projetos / Engenharia</b><small>Meta por sistema e ano ainda não vinculada</small></div><div className="va-progress" role="progressbar" aria-label={'Projetos liberados '+system} aria-valuemin={0} aria-valuemax={100} aria-valuetext="Percentual indisponível sem enquadramento por ano e sistema"><span style={{width:'0%',background:'#007977'}}/></div><div className="va-goal-numbers"><span>Liberadas conhecidas: <b>{count(approved)}</b></span><span>Saldo do marco: <b>—</b></span></div></div>
   </div>
  </div>;
 }
