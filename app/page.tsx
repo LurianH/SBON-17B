@@ -105,6 +105,8 @@ export default function Dashboard(){
  const withoutEconomies=release?release.water.economies.missing+release.sewer.economies.missing:0;
  const withoutNetwork=release?release.water.network.missing+release.sewer.network.missing:0;
  const partialRelease=withoutEconomies>0||withoutNetwork>0;
+ const releasedStains=stainState?(['WATER','SEWER'] as const).reduce((sum,system)=>sum+(stainState.counts[system].NO_OBJECTION??0)+(stainState.counts[system].NO_OBJECTION_RESERVATIONS??0),0):null;
+ const totalStains=stainState?stainState.totals.WATER+stainState.totals.SEWER:null;
  const projected=ratio(data.annualProjection,data.target);
  const projectedWidth=projected===null?0:Math.max(0,Math.min(100,projected));
  return <VitaluxChrome lastUpdated={data.latestDate} year={data.targetYear}>
@@ -123,7 +125,7 @@ export default function Dashboard(){
       <div className="va-plan-timelines">
        <h3>CRONOGRAMA DO CONTRATO</h3>
        <div className="va-plan-timeline"><div><b>Execução contratual</b><small>Metas anuais de economias · até 2028</small></div><div className="va-time-track"><span>2026</span><span>2027</span><span>2028</span></div></div>
-       <div className="va-plan-timeline"><div><b>Projetos / manchas</b><small>Conclusão dos projetos até 31/05/2027</small></div><div className="va-time-track va-time-project"><span>2026</span><span>mai/2027</span><span>2028</span></div></div>
+       <div className="va-plan-timeline"><div><b>Projetos / manchas</b><small>Conclusão até 31/05/2027 · {releasedStains===null?'aguardando situação':count(releasedStains)+' de '+count(totalStains)+' manchas liberadas (total cadastrado)'}</small></div><div className="va-time-track va-time-project"><span>2026</span><span>2027</span><span>31/05/2027</span></div></div>
       </div>
      </div>
      <div className="va-plan-lower">
