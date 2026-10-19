@@ -147,7 +147,7 @@ export default function Dashboard(){
  <div className="va-project-progress" role="progressbar" aria-label="Economias liberadas nos projetos" aria-valuemin={0} aria-valuemax={officialContractTotal} aria-valuenow={releasedEconomies??0}><i style={{width:releasedEconomies===null?'0%':Math.min(100,releasedEconomies/officialContractTotal*100)+'%'}}/></div>
  <small className="va-project-progress-label">{releasedEconomies===null?'Aguardando quantitativos':percentage(releasedEconomies/officialContractTotal*100)+' da meta conhecida como liberada'} · Saldo não comprovado: {releasedEconomies===null?'—':count(Math.max(0,officialContractTotal-releasedEconomies))}</small>
  <div className="va-plan-signal"><span className={"va-signal-dot va-signal-"+engineeringSignal.toLowerCase()}/><b>{engineeringSignal==='INCOMPLETO'?'Indicador de prazo em apuração — cadastro parcial':engineeringSignal==='VERDE'?'Ritmo compatível com referência linear':engineeringSignal==='AMARELO'?'Atenção ao ritmo de liberações':'Ritmo abaixo da referência linear'}</b><small>Para concluir até 31/05/2027, seriam necessárias aproximadamente <b>{engineeringRequiredDaily===null?'—':count(engineeringRequiredDaily,1)+' economias/dia'}</b> a partir de agora, considerando somente as liberações conhecidas. Estimativa, não meta oficial mensal.</small></div>
- <div className="va-time-track va-time-project"><span>Assinatura 20/07/2026</span><span>Hoje</span><span>Meta 31/05/2027</span></div></div></div></div>
+ <div className="va-time-track va-time-project"><span>Assinatura 20/07/2026</span><span>Hoje</span><span>Meta 31/05/2027</span></div></div>
       </div>
      </div>
      <div className="va-plan-lower">
