@@ -91,17 +91,24 @@ end $$;
 create trigger management_track before insert or update on public.engineering_project_management
 for each row execute function private.audit_eng_management();
 
-create function private.audit_eng_network() returns trigger language plpgsql
+create function private.stamp_eng_network() returns trigger language plpgsql
 security definer set search_path='' as $$
 begin
   new.updated_at=clock_timestamp();
   new.updated_by=auth.uid();
   if tg_op='INSERT' then new.created_by=auth.uid(); end if;
+  return new;
+end $$;
+create trigger network_stamp before insert or update on public.engineering_project_network_segments
+for each row execute function private.stamp_eng_network();
+create function private.audit_eng_network() returns trigger language plpgsql
+security definer set search_path='' as $$
+begin
   insert into public.engineering_project_network_segments_history(network_segment_id,engineering_project_id,old_data,new_data,changed_by)
   values(new.id,new.engineering_project_id,case when tg_op='UPDATE' then to_jsonb(old) else null end,to_jsonb(new),auth.uid());
   return new;
 end $$;
-create trigger network_track before insert or update on public.engineering_project_network_segments
+create trigger network_track after insert or update on public.engineering_project_network_segments
 for each row execute function private.audit_eng_network();
 
 -- Valores históricos aprovados: migrar DE63 e DE110 uma única vez, sem duplicar.
