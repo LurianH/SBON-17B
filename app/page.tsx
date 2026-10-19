@@ -14,6 +14,10 @@ const currency=(v:number|null)=>v===null?'Em apuração':new Intl.NumberFormat('
 const km=(v:number|null)=>v===null?'—':count(v/1000,2)+' km';
 const percentage=(v:number|null)=>v===null?'—':count(v,1)+'%';
 const ratio=(numerator:number|null,denominator:number|null)=>numerator===null||denominator===null||denominator<=0?null:numerator/denominator*100;
+// Mostra o valor conhecido mesmo quando outra frente liberada ainda não tem quantitativos.
+// A origem gerencial segue exigindo o total completo para cálculos de desvio.
+const knownReleased=(water:number|null,sewer:number|null)=>
+ water===null&&sewer===null?null:(water??0)+(sewer??0);
 const date=(v:string|null)=>v?new Intl.DateTimeFormat('pt-BR').format(new Date(v+'T12:00:00')):'Aguardando atualização';
 const absence='Ainda não informado';
 
@@ -92,6 +96,12 @@ export default function Dashboard(){
  const targetWater=data.targetBreakdown?.water??null,targetSewer=data.targetBreakdown?.sewer??null;
  const engWater=data.engineeringBreakdown?.waterEconomies??null,engSewer=data.engineeringBreakdown?.sewerEconomies??null;
  const netWater=data.engineeringBreakdown?.waterNetwork??null,netSewer=data.engineeringBreakdown?.sewerNetwork??null;
+ const release=data.releaseSummary;
+ const releasedEconomies=release?knownReleased(release.water.economies.value,release.sewer.economies.value):null;
+ const releasedNetwork=release?knownReleased(release.water.network.value,release.sewer.network.value):null;
+ const withoutEconomies=release?release.water.economies.missing+release.sewer.economies.missing:0;
+ const withoutNetwork=release?release.water.network.missing+release.sewer.network.missing:0;
+ const partialRelease=withoutEconomies>0||withoutNetwork>0;
  const projected=ratio(data.annualProjection,data.target);
  const projectedWidth=projected===null?0:Math.max(0,Math.min(100,projected));
  return <VitaluxChrome lastUpdated={data.latestDate} year={data.targetYear}>\n  <main className="va-main">
@@ -107,7 +117,7 @@ export default function Dashboard(){
     <Deviation data={data}/>
    </section>
    <section className="va-bottom-grid">
-    <article className="va-card"><PanelTitle icon={FileCheck2} title="ENTREGA DA ENGENHARIA"/><p className="va-notice-small">Liberados para execução: <b>{data.releaseSummary?.projects??'—'} projetos</b> (Sem objeção + S/Obj. com ressalvas). Quantitativos técnicos cadastrados para esses projetos; quando incompletos, permanecem em apuração.</p><div className="va-two-metrics"><Mini label="Economias liberadas" value={count(data.available)} context={'Água '+count(engWater)+' · Esgoto '+count(engSewer)}/><Mini label="Rede liberada" value={km(data.networkApproved)} context={'Água '+km(netWater)+' · Esgoto '+km(netSewer)}/></div><Link className="va-card-action" href="/engenharia">Detalhar Engenharia ↗</Link></article>
+    <article className="va-card"><PanelTitle icon={FileCheck2} title="ENTREGA DA ENGENHARIA"/><p className="va-notice-small">Liberados para execução: <b>{release?.projects??'—'} projetos</b> (Sem objeção + S/Obj. com ressalvas). {partialRelease?'Totais conhecidos parciais; ainda há projetos liberados sem quantitativos técnicos.':'Quantitativos técnicos dos projetos liberados.'}</p><div className="va-two-metrics"><Mini label={'Economias liberadas'+(withoutEconomies?' · parcial':'')} value={count(releasedEconomies)} context={'Água '+count(release?.water.economies.value??null)+' · Esgoto '+count(release?.sewer.economies.value??null)}/><Mini label={'Rede liberada'+(withoutNetwork?' · parcial':'')} value={km(releasedNetwork)} context={'Água '+km(release?.water.network.value??null)+' · Esgoto '+km(release?.sewer.network.value??null)}/></div>{partialRelease&&<p className="va-notice-small">Pendente: {withoutEconomies} projeto(s) sem economias técnicas e {withoutNetwork} sem metragem de rede. O total apresentado não inclui esses valores ausentes.</p>}<Link className="va-card-action" href="/engenharia">Detalhar Engenharia ↗</Link></article>
     <article className="va-card"><PanelTitle icon={Network} title="EXECUÇÃO REAL"/><div className="va-two-metrics"><Mini label="Economias executadas" value={count(data.executed)} context="Acumulado informado"/><Mini label="Rede executada" value={km(data.networkExecuted)} context="Acumulado informado"/></div><Link className="va-card-action" href="/atualizar">Atualizar execução ↗</Link></article>
     <article className="va-card va-structures"><PanelTitle icon={Building2} title="ESTRUTURAS CADASTRADAS"/><div className="va-structure-rows"><div><Landmark size={17}/><span>Reservatórios</span><b>{structures?count(structures.reservoirs):'—'}</b></div><div><Target size={17}/><span>Boosters</span><b>{structures?count(structures.boosters):'—'}</b></div><div><Network size={17}/><span>EEEs</span><b>{structures?count(structures.eees):'—'}</b></div></div><Link className="va-card-action" href="/engenharia">Abrir obras localizadas ↗</Link></article>
     <article className="va-card va-distribution"><PanelTitle icon={MapPin} title="DISTRIBUIÇÃO DAS MANCHAS"/><div className="va-distribution-inner"><div><Droplets size={24} className="va-water"/><span>Água</span><strong>{stainState?.totals.WATER??38}</strong><small>manchas</small></div><div><Waves size={24} className="va-sewer"/><span>Esgoto</span><strong>{stainState?.totals.SEWER??84}</strong><small>manchas</small></div></div><Link className="va-card-action" href="/engenharia">Visualizar por município ↗</Link></article>
