@@ -45,10 +45,9 @@ function SegmentAmounts({projects,title,gis}:{projects:CurrentProject[];title:st
   </div>;
 }
 
-export function EngineeringPanel({projects, updates, categories, role, contractId, notice, localizedWorks=[], localizedNotice='', stainSummary={waterTotal:28,sewerTotal:74,waterClassified:0,sewerClassified:0}, reviewRows=[], gisProjects=[]}: {
+export function EngineeringPanel({projects, updates, categories, role, contractId, notice, localizedWorks=[], localizedNotice='', reviewRows=[], gisProjects=[]}: {
   projects: Project[]; updates: Update[]; categories: Category[]; role: string | null; contractId: string | null; notice: string;
   localizedWorks?: LocalizedWorkRow[]; localizedNotice?: string;
-  stainSummary?: {waterTotal:number;sewerTotal:number;waterClassified:number;sewerClassified:number};
   reviewRows?: ProjectReviewRow[];
   gisProjects?: GisProjectRow[];
 }) {
@@ -59,7 +58,7 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
   const all = currentProjects(projects, updates), visible = filterProjects(all, filters);
   const canEdit = canWriteEngineering(role) && Boolean(contractId) && !director;
   const filtered = Object.values(filters).some(Boolean);
-  const general = visible.filter(p => p.project_category === 'GENERAL'), statics = visible.filter(p => p.project_category === 'STATIC');
+
   const linearVisible = all.filter(p => p.project_type === 'PE' && p.project_category === 'WATER_LINEAR'
     && (!filters.city || p.municipality === filters.city)
     && (!filters.segment || p.segment_type === filters.segment)
@@ -72,8 +71,8 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
     {key: 'executive', label: 'Status do executivo', options: Object.entries(executiveLabels)},
   ];
   return <div className="engineering">
-    <div id="engenharia-aprovacoes"><EngineeringManagementOverview projects={visible} localizedWorks={localizedWorks} stains={stainSummary} reviews={reviewRows}/></div>
-    <div className="engineering-toolbar"><p>Projetos cadastrados por mancha e sistema, com classificação técnica</p><div>{role !== 'DIRETORIA' && <button onClick={() => {setDirector(!director); setEditing(null);}}>{director ? 'Sair do Modo Diretoria' : 'Modo Diretoria'}</button>}{canEdit && <button onClick={() => setEditing('new')}>Cadastrar projeto</button>}</div></div>
+    <div id="engenharia-aprovacoes"><EngineeringManagementOverview projects={visible} localizedWorks={localizedWorks} reviews={reviewRows}/></div>
+    <div className="engineering-toolbar"><p>Projetos cadastrados por mancha e sistema, com situação gerencial</p><div>{role !== 'DIRETORIA' && <button onClick={() => {setDirector(!director); setEditing(null);}}>{director ? 'Sair do Modo Diretoria' : 'Modo Diretoria'}</button>}{canEdit && <button onClick={() => setEditing('new')}>Cadastrar projeto</button>}</div></div>
     {notice && <p role="alert" className="engineering-notice">{notice}</p>}
     {feedback && <p role="status" className="engineering-notice">{feedback}</p>}
     <section className="panel engineering-filters" aria-label="Filtros de engenharia">{fields.map(f => <label key={f.key}>{f.label}<select value={filters[f.key]} onChange={e => setFilters({...filters, [f.key]: e.target.value})}><option value="">Todos</option>{f.options.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>)}<button onClick={() => setFilters(emptyFilters)}>Limpar filtros</button></section>
@@ -81,18 +80,12 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
     {!notice && !all.length && <p className="engineering-notice">Aguardando cadastro</p>}
     {!notice && all.length > 0 && !visible.length && <p role="status">Nenhum projeto corresponde aos filtros.</p>}
     <nav className="engineering-overview-nav" aria-label="Navegação do painel de engenharia">
-      <a href="#engenharia-aprovacoes">Aprovações</a>
+      <a href="#engenharia-aprovacoes">Panorama de projetos</a>
       <a href="#engenharia-redes">Redes por diâmetro e município</a>
       <a href="#engenharia-estruturas">EEE, reservatórios e boosters</a>
       <a href="#engenharia-classificacao">Classificação de projetos</a>
       <a href="#engenharia-cidades">Manchas e municípios</a>
     </nav>
-    <section className="engineering-overview-summary" aria-label="Resumo gerencial da engenharia">
-      <article><span>Projetos gerais</span><strong>{general.length}</strong><small>Ativos nos filtros selecionados</small></article>
-      <article><span>Contratada Estática</span><strong>{statics.length}</strong><small>Projetos com categoria Estática no cadastro</small></article>
-      <article><span>Obras lineares de Água</span><strong>{linearVisible.length}</strong><small>Projetos com detalhamento por diâmetro</small></article>
-      <article><span>Projetos de Engenharia</span><strong>{visible.length}</strong><small>Total exibido conforme filtros</small></article>
-    </section>
     <section id="engenharia-redes" className="panel engineering-totals" aria-label="Consolidação de economias e metragem">
       <SegmentAmounts title="Água" gis={gisProjects} projects={visible.filter(p => p.segment_type === 'WATER')}/><SegmentAmounts title="Esgoto" gis={gisProjects} projects={visible.filter(p => p.segment_type === 'SEWER')}/><SegmentAmounts title="Total" gis={gisProjects} projects={visible}/>
     </section>
