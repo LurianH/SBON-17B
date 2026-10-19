@@ -71,6 +71,7 @@ export default function Dashboard(){
  const [structures,setStructures]=useState<Structures|null>(null);
  const [stainState,setStainState]=useState<StainState|null>(null);
  const [annualTargets,setAnnualTargets]=useState<{year:number;total:number}[]>([]);
+ const [attack2026,setAttack2026]=useState<{economies:number;stains:number}|null>(null);
  useEffect(()=>{
   let active=true;
   void (async()=>{
@@ -79,12 +80,14 @@ export default function Dashboard(){
    setData(result);
    if(!result.contractId||result.source!=='supabase')return;
    const db=createClient();if(!db)return;
-   const [works,targets,stains,annual]=await Promise.all([
+   const [works,targets,stains,annual,attack]=await Promise.all([
     db.from('engineering_localized_works').select('kind,quantity').eq('contract_id',result.contractId).eq('active',true),
     db.from('contract_stain_targets').select('segment_type,total_count').eq('contract_id',result.contractId),
     db.from('gis_stain_system_effective').select('segment_type,effective_status').eq('contract_id',result.contractId),
-    db.from('annual_targets').select('year,target_economies').eq('contract_id',result.contractId).gte('year',2026).lte('year',2028).order('year')
+    db.from('annual_targets').select('year,target_economies').eq('contract_id',result.contractId).gte('year',2026).lte('year',2028).order('year'),
+    db.from('engineering_attack_plan_2026').select('stain_id,planned_economies')
    ]);
+   if(!attack.error&&attack.data){const unique=new Set(attack.data.map(row=>String(row.stain_id)));setAttack2026({economies:attack.data.reduce((n,row)=>n+Number(row.planned_economies??0),0),stains:unique.size});}
    if(!annual.error&&annual.data)setAnnualTargets(annual.data.map(row=>({year:Number(row.year),total:Number(row.target_economies)})));
    if(!active)return;
    if(!works.error&&works.data){
@@ -150,7 +153,7 @@ export default function Dashboard(){
  </div>
  </div>
  <div className="va-plan-lower">
-      <div className="va-plan-assessment"><h3>LEITURA DO CRONOGRAMA E DO ATAQUE DAS MANCHAS</h3><p>Cobertura de projetos para atender a execução de cada ano</p><div className="va-plan-years">{[2026,2027,2028].map(year=><div key={year}><b>{year}</b><span>Meta: {count(annualGoal(year))} economias</span><small>Economias em projetos atribuídas ao ano: aguardando classificação</small><em className="va-traffic va-traffic-unknown"><i/>Semáforo: não avaliado</em></div>)}</div></div>
+      <div className="va-plan-assessment"><h3>LEITURA DO CRONOGRAMA E DO ATAQUE DAS MANCHAS</h3><p>Cobertura de projetos para atender a execução de cada ano</p><div className="va-plan-years">{[2026,2027,2028].map(year=><div key={year}><b>{year}</b><span>Meta: {count(annualGoal(year))} economias</span><small>{year===2026&&attack2026?'Carteira de ataque 2026: '+count(attack2026.economies)+' economias em '+count(attack2026.stains)+' manchas (planejado, não liberado)':'Economias em projetos atribuídas ao ano: aguardando classificação'}</small><em className="va-traffic va-traffic-unknown"><i/>Semáforo: não avaliado</em></div>)}</div></div>
       <div className="va-plan-targets"><h3>METAS POR ANO</h3>{[2026,2027,2028].map(year=><div key={year}><span>{year}</span><b>{count(annualGoal(year))}</b></div>)}<div className="va-plan-total"><span>Total</span><b>{count(officialContractTotal)}</b></div><small>Economias · recorte oficial informado. Números zerados no cadastro serão sinalizados para correção.</small></div>
      </div>
      <p className="va-notice-small">A execução por sistema permanece pendente enquanto não houver origem segregada. A Engenharia deve liberar até maio/2027 projetos para todas as 14.421 economias contratadas. O semáforo depende do avanço comprovado dessas entregas, não apenas da quantidade de manchas.</p>
