@@ -37,7 +37,7 @@ function History({row}:{row:GisSystemRow}) {
  return <details onToggle={e=>{if(e.currentTarget.open)void load()}}>
   <summary>Histórico</summary>
   {row.cancelled&&<p>Cancelada conforme definição contratual registrada.</p>}
-  {row.segment_type==='WATER'&&row.engineering_project_id&&<p>O histórico da classificação está disponível na Engenharia.</p>}
+  {row.engineering_project_id&&<p>O histórico atualizado da classificação deste sistema está disponível na Engenharia.</p>}
   {error&&<p role="alert">{error}</p>}
   {items?.length===0&&<p>Sem alterações nesta classificação.</p>}
   {items?.map(x=><p key={x.id}>{x.old_status?labels[x.old_status]+' → ':''}{labels[x.new_status]} · {new Date(x.changed_at).toLocaleString('pt-BR')}</p>)}
@@ -73,7 +73,7 @@ export function GisRegistry({rows,role}:{rows:GisSystemRow[];role:string}) {
       sewerMissing:cityUnique.filter(r=>r.economies_ice===null).length};
  });
  async function save(row:GisSystemRow,status:Status){
-  if(!editable||busy||row.cancelled||(row.segment_type==='WATER'&&row.engineering_project_id))return;
+  if(!editable||busy||row.cancelled||row.engineering_project_id)return;
   const db=createClient();if(!db){setMessage('Conexão indisponível.');return;}
   setBusy(row.id+row.segment_type);setMessage('');
   const {data:{user}}=await db.auth.getUser();
@@ -108,7 +108,7 @@ export function GisRegistry({rows,role}:{rows:GisSystemRow[];role:string}) {
    </tbody></table></div>
   </section>
   <section className="panel gis-records" aria-label="Relação das manchas por sistema">
-   <div className="gis-section-head"><div><h2>Manchas e classificação por sistema</h2><p>O status de Água vinculado a um projeto deve ser atualizado na Engenharia. Esgoto possui classificação independente.</p></div><Link href="/engenharia#engenharia-classificacao">Abrir Engenharia →</Link></div>
+   <div className="gis-section-head"><div><h2>Manchas e classificação por sistema</h2><p>Cada código GIS possui um projeto para cada sistema aplicável. Altere os status na aba Engenharia; Água e Esgoto continuam com classificações independentes.</p></div><Link href="/engenharia#engenharia-classificacao">Abrir Engenharia →</Link></div>
    <div className="gis-filters">
     <label>Sistema<select value={segment} onChange={e=>setSegment(e.target.value as Segment)}><option value="WATER">Água</option><option value="SEWER">Esgoto</option></select></label>
     <label>Município<select value={city} onChange={e=>setCity(e.target.value)}><option value="">Todos</option>{cities.map(v=><option key={v}>{v}</option>)}</select></label>
