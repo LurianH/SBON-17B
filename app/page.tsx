@@ -30,11 +30,12 @@ function PanelTitle({icon:Icon,title,action}:{icon:typeof Target,title:string,ac
 function Kpi({icon:Icon,title,value,note}:{icon:typeof Target,title:string,value:string,note:string}){
  return <article className="va-card va-kpi"><div className="va-kpi-title"><Icon size={20}/><h2>{title}</h2></div><strong>{value}</strong><small>{note}</small></article>;
 }
-function GoalRow({system,goal,approved,icon:Icon}:{system:'Água'|'Esgoto';goal:number|null;approved:number|null;icon:typeof Droplets}){
+function GoalRow({system,goal,approved,executedTotal,icon:Icon}:{system:'Água'|'Esgoto';goal:number|null;approved:number|null;executedTotal:number|null;icon:typeof Droplets}){
  const engineeringRatio=ratio(approved,goal);
+ const confirmedZero=executedTotal===0;
  return <div className="va-goal-row">
   <div className="va-goal-system"><Icon size={30} className={system==='Água'?'va-water':'va-sewer'}/><div><b>{system}</b><small>Meta: {goal===null?absence:count(goal)+' economias'}</small></div></div>
-  <div className="va-goal-graphic"><div className="va-progress va-progress-empty" aria-label={'Execução de '+system+' ainda não segregada por sistema'}><span/></div><div className="va-goal-numbers"><span>Executadas: <b>—</b></span><span>A executar: <b>—</b></span></div><small className="va-goal-context">Aprovadas na Engenharia: {count(approved)}{engineeringRatio===null?'':' ('+percentage(engineeringRatio)+' da meta)'}</small></div>
+  <div className="va-goal-graphic"><div className="va-progress va-progress-empty" aria-label={'Execução de '+system+' ainda não segregada por sistema'}><span/></div><div className="va-goal-numbers"><span>Executadas: <b>{confirmedZero?'0':'—'}</b></span><span>A executar: <b>{confirmedZero?count(goal):'—'}</b></span></div><small className="va-goal-context">Aprovadas na Engenharia: {count(approved)}{engineeringRatio===null?'':' ('+percentage(engineeringRatio)+' da meta)'}</small></div>
   <div className="va-goal-percent"><strong>—</strong><small>execução por sistema pendente</small></div>
  </div>;
 }
@@ -125,11 +126,11 @@ export default function Dashboard(){
     <article className="va-card va-goals va-goals-rev">
      <PanelTitle icon={Target} title="METAS DO CONTRATO"/>
      <div className="va-goal-upper">
-      <div className="va-goal-systems"><GoalRow system="Água" goal={targetWater} approved={engWater} icon={Droplets}/><GoalRow system="Esgoto" goal={targetSewer} approved={engSewer} icon={Waves}/></div>
+      <div className="va-goal-systems"><GoalRow system="Água" goal={targetWater} approved={engWater} executedTotal={data.executed} icon={Droplets}/><GoalRow system="Esgoto" goal={targetSewer} approved={engSewer} executedTotal={data.executed} icon={Waves}/></div>
       <div className="va-plan-timelines">
        <h3>CRONOGRAMA DO CONTRATO</h3>
        <div className="va-plan-timeline"><div><b>Execução contratual</b><small>Meta do contrato: {count(officialContractTotal)} economias · até 2028</small></div><div className="va-time-track"><span>2026 · {count(annualGoal(2026))}</span><span>2027 · {count(annualGoal(2027))}</span><span>2028 · {count(annualGoal(2028))}</span></div></div>
-       <div className="va-plan-timeline"><div><b>Projetos / manchas</b><small>Meta da Engenharia: {count(officialContractTotal)} economias em projetos liberados até 31/05/2027</small><small className="va-project-delivery">Liberadas: {count(releasedEconomies)} economias{withoutEconomies>0?" (parcial — "+withoutEconomies+" mancha(s) sem quantitativo)":""} · {releasedStains===null?"Manchas: em apuração":count(releasedStains)+" de "+count(totalStains)+" manchas liberadas"}</small></div><div className="va-time-track va-time-project"><span>2026</span><span>início 2027</span><span>31/05/2027</span></div></div>
+       <div className="va-plan-timeline"><div><b>Projetos / manchas</b><small>Meta da Engenharia: {count(officialContractTotal)} economias em projetos liberados até 31/05/2027</small><small className="va-project-delivery">Liberadas: {count(releasedEconomies)} economias{withoutEconomies>0?" (parcial — "+withoutEconomies+" mancha(s) sem quantitativo)":""} · {releasedStains===null?"Manchas: em apuração":count(releasedStains)+" de "+count(totalStains)+" manchas liberadas"}</small></div><div className="va-time-area"><div className="va-project-progress" role="progressbar" aria-label="Economias liberadas em projetos com quantitativos técnicos conhecidos" aria-valuemin={0} aria-valuemax={officialContractTotal} aria-valuenow={releasedEconomies??0}><i style={{width:releasedEconomies===null?"0%":Math.min(100,releasedEconomies/officialContractTotal*100)+"%"}}/></div><small className="va-project-progress-label">{releasedEconomies===null?"Aguardando liberação":count(releasedEconomies)+" economias liberadas ("+percentage(releasedEconomies/officialContractTotal*100)+" da meta · parcial)"}</small><div className="va-time-track va-time-project"><span>2026</span><span>início 2027</span><span>31/05/2027</span></div></div></div>
       </div>
      </div>
      <div className="va-plan-lower">
