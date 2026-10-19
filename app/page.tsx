@@ -147,7 +147,7 @@ export default function Dashboard(){
   <b>2 · Engenharia — projetos liberados</b>
   <small>Meta de liberação de projetos: 1.709 economias até 31/12/2026; 12.712 adicionais até 31/05/2027.</small>
   <div className="va-time-track va-time-project"><span>20/07/2026</span><span>31/12/2026 · 1.709</span><span>31/05/2027 · 14.421</span></div>
-  <div className="va-project-progress" role="progressbar" aria-label="Economias liberadas pela Engenharia" aria-valuemin={0} aria-valuemax={officialContractTotal} aria-valuenow={releasedEconomies??0}><i style={{width:releasedEconomies===null?'0%':Math.min(100,releasedEconomies/officialContractTotal*100)+'%'}}/></div>
+  <div className="va-project-progress" role="progressbar" aria-label="Economias liberadas pela Engenharia" aria-valuemin={0} aria-valuemax={officialContractTotal} aria-valuenow={releasedEconomies===null?undefined:releasedEconomies}><i style={{width:releasedEconomies===null?'0%':Math.min(100,releasedEconomies/officialContractTotal*100)+'%'}}/></div>
   <div className="va-separate-summary"><span>Liberadas conhecidas: <b>{count(releasedEconomies)}</b>{withoutEconomies>0?' · parcial':''}</span><span>Saldo não comprovado: <b>{releasedEconomies===null?'—':count(Math.max(0,officialContractTotal-releasedEconomies))}</b></span></div>
   <small>{releasedStains===null?'Manchas: aguardando cadastro':count(releasedStains)+' de '+count(totalStains)+' manchas liberadas'}. As liberações conhecidas ainda não estão classificadas por marco anual. Semáforo por marcos: aguardando enquadramento das economias e validação do cronograma, sem produtividade diária.</small>
  </div>
