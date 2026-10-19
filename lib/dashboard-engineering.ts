@@ -24,7 +24,7 @@ export function summarizeEngineeringRelease(projects:Project[],updates:Update[],
  const metric=(list:CurrentProject[],field:'approved_economies'|'approved_length_m'):ReleasedMetric=>{
   const scale=field==='approved_length_m'?1000:1;
   const known=list.map(project=>project.current?.[field]).filter(value=>value!==null&&value!==undefined);
-  return {value:known.length?known.reduce((sum,value)=>sum+Math.round(Number(value)*scale),0)/scale:null,
+  return {value:known.length?known.reduce<number>((sum,value)=>sum+Math.round(Number(value)*scale),0)/scale:null,
     missing:list.length-known.length};
  };
  const segment=(key:'WATER'|'SEWER'):ReleasedSegment=>{
