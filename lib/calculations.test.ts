@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {calculateAnnualEconomiesProjection,calculateAnnualTargetDeviation,calculateDashboardStatus,calculateDeviationOrigin,calculateMonthlyBillingYTD,calculateProjectionBaseAverage,calculateQuarterProjection,calculateWeeklyDelta} from './calculations';
+import {calculateAnnualEconomiesProjection,calculateAnnualTargetDeviation,calculateDashboardStatus,calculateDeviationOrigin,calculateMonthlyBillingYTD,calculateProjectionBaseAverage,calculateObservedWeeklyEconomiesRate,calculateQuarterProjection,calculateWeeklyDelta} from './calculations';
 describe('regras executivas',()=>{
  it('calcula deltas acumulados',()=>expect(calculateWeeklyDelta({referenceDate:'2',economiesAvailable:10500,economiesExecuted:8900,networkApprovedM:1100,networkExecutedM:900},{referenceDate:'1',economiesAvailable:10000,economiesExecuted:8500,networkApprovedM:1000,networkExecutedM:800})).toEqual({economiesAvailable:500,economiesExecuted:400,networkApprovedM:100,networkExecutedM:100}));
  it('soma somente o exercício',()=>expect(calculateMonthlyBillingYTD([{year:2026,amount:10},{year:2025,amount:90},{year:2026,amount:5}],2026)).toBe(15));
@@ -11,5 +11,35 @@ describe('regras executivas',()=>{
  it('atribui desvio somente à engenharia',()=>{const r=calculateDeviationOrigin(100,0.5,40,40);expect(r.engineeringPercent).toBe(100);expect(r.executionPercent).toBe(0)});
  it('atribui desvio somente à execução',()=>{const r=calculateDeviationOrigin(100,0.5,55,40);expect(r.engineeringPercent).toBe(0);expect(r.executionPercent).toBe(100)});
  it('distribui quando ambos estão abaixo',()=>{const r=calculateDeviationOrigin(100,0.5,45,35);expect(r.engineeringPercent).toBeCloseTo(33.333);expect(r.executionPercent).toBeCloseTo(66.667)});
+ it('não projeta economias quando a única execução é rede PEAD DE63',()=>{
+   const series=[
+    {reference_date:'2026-08-27',economies_executed:0},
+    {reference_date:'2026-09-03',economies_executed:0},
+    {reference_date:'2026-10-08',economies_executed:0},
+    {reference_date:'2026-10-09',economies_executed:0},
+    {reference_date:'2026-10-15',economies_executed:0},
+    {reference_date:'2026-10-16',economies_executed:0}
+   ];
+   expect(calculateObservedWeeklyEconomiesRate(series)).toBeNull();
+ });
+ it('pondera registros espaçados diariamente e semanalmente por dias reais',()=>{
+   const series=[
+    {reference_date:'2026-10-01',economies_executed:10},
+    {reference_date:'2026-10-02',economies_executed:15},
+    {reference_date:'2026-10-15',economies_executed:40}
+   ];
+   expect(calculateObservedWeeklyEconomiesRate(series)).toBe(15);
+ });
+ it('bloqueia regressão ou histórico insuficiente',()=>{
+   expect(calculateObservedWeeklyEconomiesRate([
+     {reference_date:'2026-10-01',economies_executed:10},
+     {reference_date:'2026-10-02',economies_executed:12}
+   ])).toBeNull();
+   expect(calculateObservedWeeklyEconomiesRate([
+     {reference_date:'2026-10-01',economies_executed:10},
+     {reference_date:'2026-10-08',economies_executed:8},
+     {reference_date:'2026-10-15',economies_executed:11}
+   ])).toBeNull();
+ });
  it('calcula as quatro médias pelos deltas',()=>{expect(calculateProjectionBaseAverage([10000,10350,10730,11100])).toBeCloseTo(366.667);expect(calculateProjectionBaseAverage([8000,8250,8560,8840])).toBe(280);expect(calculateProjectionBaseAverage([140000,145000,151000,157000])).toBeCloseTo(5666.667);expect(calculateProjectionBaseAverage([120000,123500,127800,132000])).toBe(4000)});
 });
