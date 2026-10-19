@@ -150,6 +150,7 @@ export default function Dashboard(){
  <div className="va-time-track va-time-project"><span>Assinatura 20/07/2026</span><span>Hoje</span><span>Meta 31/05/2027</span></div></div>
       </div>
      </div>
+     </div>
      <div className="va-plan-lower">
       <div className="va-plan-assessment"><h3>LEITURA DO CRONOGRAMA E DO ATAQUE DAS MANCHAS</h3><p>Cobertura da carteira de projetos frente às metas anuais de execução</p><div className="va-plan-years">{[2026,2027,2028].map(year=><div key={year}><b>{year}</b><span>Meta: {count(annualGoal(year))} economias</span><small>Projetos para estas economias: aguardando vínculo das manchas</small><em className="va-traffic va-traffic-unknown"><i/>Semáforo: não avaliado</em></div>)}</div></div>
       <div className="va-plan-targets"><h3>METAS POR ANO</h3>{[2026,2027,2028].map(year=><div key={year}><span>{year}</span><b>{count(annualGoal(year))}</b></div>)}<div className="va-plan-total"><span>Total</span><b>{count(officialContractTotal)}</b></div><small>Economias · recorte oficial informado. Números zerados no cadastro serão sinalizados para correção.</small></div>
