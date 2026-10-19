@@ -1,17 +1,16 @@
 'use client';
 
 import {useState} from 'react';
-import {useRouter} from 'next/navigation';
 import {LocalizedWorksEngineering} from '@/components/LocalizedWorksEngineering';
 import {createClient} from '@/lib/supabase/client';
 import {canWriteEngineering, conceptLabels, currentProjects, deliveryLabels, emptyFilters, executiveLabels, filterProjects,
-  municipalities, projectSchema, segments, summarizeEngineering, updateSchema,
-  type Category, type CurrentProject, type EngineeringFilters, type Project, type Update} from '@/lib/engineering';
-import {EngineeringWaterLinearSection} from '@/components/EngineeringWaterLinearSection';
+  municipalities, segments, type Category, type EngineeringFilters, type Project, type Update} from '@/lib/engineering';
+import {EngineeringProjectHub} from '@/components/EngineeringProjectHub';
 import {EngineeringManagementOverview} from '@/components/EngineeringManagementOverview';
-import {EngineeringReviewStatus} from '@/components/EngineeringReviewStatus';
+
 import type {ProjectReviewRow} from '@/lib/project-review-status';
 import type {GisProjectRow} from '@/lib/gis-project-model';
+import type {ProjectManagementRow,ProjectNetworkRow} from '@/lib/engineering-unified-model';
 import type {LocalizedWorkRow} from '@/lib/localized-works-model';
 
 const format = (v: number | null, meters = false) => v === null ? 'Aguardando atualização' : new Intl.NumberFormat('pt-BR', {maximumFractionDigits: 3}).format(v) + (meters ? ' m' : '');
@@ -19,50 +18,21 @@ const day = (v: string) => new Intl.DateTimeFormat('pt-BR').format(new Date(v + 
 const instant = (v: string) => new Intl.DateTimeFormat('pt-BR', {dateStyle: 'short', timeStyle: 'short'}).format(new Date(v));
 const localDate = () => {const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;};
 
-function Amount({metric, meters = false}: {metric: {value: number | null; partial: boolean}; meters?: boolean}) {
-  return <><strong>{format(metric.value, meters)}</strong>{metric.partial && metric.value !== null && <small>Parcial · há projetos aguardando atualização</small>}</>;
-}
-function SegmentAmounts({projects,title,gis}:{projects:CurrentProject[];title:string;gis:GisProjectRow[]}) {
-  const summary=summarizeEngineering(projects);
-  const ids=new Set(projects.map(project=>project.id));
-  const relevant=gis.filter(row=>row.engineering_project_id&&ids.has(row.engineering_project_id)&&!row.cancelled);
-  const metric=(system:'WATER'|'SEWER')=>{
-    const values=relevant.filter(row=>row.segment_type===system);
-    const known=values.map(row=>system==='WATER'?row.economies_ica:row.economies_ice)
-      .filter((value):value is number=>value!==null);
-    return {value:known.length?known.reduce((total,value)=>total+Number(value),0):null,
-      missing:values.length-known.length};
-  };
-  const water=metric('WATER'),sewer=metric('SEWER');
-  const show=(label:string,number:{value:number|null;missing:number})=><>
-    <span>{label}</span><strong>{number.value===null?'Aguardando dados GIS':new Intl.NumberFormat('pt-BR').format(number.value)}</strong>
-    {number.missing>0&&<small>{number.missing} manchas sem quantidade informada · parcial</small>}
-  </>;
-  return <div className="engineering-segment"><h3>{title}</h3>
-    {(title==='Água'||title==='Total')&&show('Economias de Água · estimativa GIS',water)}
-    {(title==='Esgoto'||title==='Total')&&show('Economias de Esgoto · estimativa GIS',sewer)}
-    <span>Metragem aprovada · dados técnicos da Engenharia</span><Amount metric={summary.length} meters/>
-  </div>;
-}
-
-export function EngineeringPanel({projects, updates, categories, role, contractId, notice, localizedWorks=[], localizedNotice='', reviewRows=[], gisProjects=[]}: {
+export function EngineeringPanel({projects, updates, categories, role, contractId, notice, localizedWorks=[], localizedNotice='', reviewRows=[], gisProjects=[],managementRows=[],networkRows=[]}: {
   projects: Project[]; updates: Update[]; categories: Category[]; role: string | null; contractId: string | null; notice: string;
   localizedWorks?: LocalizedWorkRow[]; localizedNotice?: string;
   reviewRows?: ProjectReviewRow[];
   gisProjects?: GisProjectRow[];
+  managementRows?:ProjectManagementRow[];
+  networkRows?:ProjectNetworkRow[];
 }) {
   const [filters, setFilters] = useState<EngineeringFilters>(emptyFilters);
-  const [editing, setEditing] = useState<CurrentProject | 'new' | null>(null);
   const [feedback, setFeedback] = useState('');
   const [director, setDirector] = useState(role === 'DIRETORIA');
   const all = currentProjects(projects, updates), visible = filterProjects(all, filters);
   const canEdit = canWriteEngineering(role) && Boolean(contractId) && !director;
   const filtered = Object.values(filters).some(Boolean);
 
-  const linearVisible = all.filter(p => p.project_type === 'PE' && p.project_category === 'WATER_LINEAR'
-    && (!filters.city || p.municipality === filters.city)
-    && (!filters.segment || p.segment_type === filters.segment)
-    && (!filters.category || p.project_category === filters.category));
   const fields: {key: keyof EngineeringFilters; label: string; options: [string, string][]}[] = [
     {key: 'city', label: 'Cidade', options: municipalities.map(c => [c, c])},
     {key: 'segment', label: 'Segmento', options: Object.entries(segments)},
@@ -72,67 +42,29 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
   ];
   return <div className="engineering">
     <div id="engenharia-aprovacoes"><EngineeringManagementOverview projects={visible} localizedWorks={localizedWorks} reviews={reviewRows}/></div>
-    <div className="engineering-toolbar"><p>Projetos cadastrados por mancha e sistema, com situação gerencial</p><div>{role !== 'DIRETORIA' && <button onClick={() => {setDirector(!director); setEditing(null);}}>{director ? 'Sair do Modo Diretoria' : 'Modo Diretoria'}</button>}{canEdit && <button onClick={() => setEditing('new')}>Cadastrar projeto</button>}</div></div>
+    <div className="engineering-toolbar"><p>Projetos cadastrados por mancha e sistema, com situação gerencial</p><div>{role !== 'DIRETORIA' && <button onClick={() => setDirector(!director)}>{director ? 'Sair do Modo Diretoria' : 'Modo Diretoria'}</button>}</div></div>
     {notice && <p role="alert" className="engineering-notice">{notice}</p>}
     {feedback && <p role="status" className="engineering-notice">{feedback}</p>}
     <section className="panel engineering-filters" aria-label="Filtros de engenharia">{fields.map(f => <label key={f.key}>{f.label}<select value={filters[f.key]} onChange={e => setFilters({...filters, [f.key]: e.target.value})}><option value="">Todos</option>{f.options.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>)}<button onClick={() => setFilters(emptyFilters)}>Limpar filtros</button></section>
     {filtered && <p className="engineering-context">Indicadores e cidades refletem os filtros · {visible.length} projetos encontrados</p>}
     {!notice && !all.length && <p className="engineering-notice">Aguardando cadastro</p>}
     {!notice && all.length > 0 && !visible.length && <p role="status">Nenhum projeto corresponde aos filtros.</p>}
-    <nav className="engineering-overview-nav" aria-label="Navegação do painel de engenharia">
-      <a href="#engenharia-aprovacoes">Panorama de projetos</a>
-      <a href="#engenharia-redes">Redes por diâmetro e município</a>
-      <a href="#engenharia-estruturas">EEE, reservatórios e boosters</a>
-      <a href="#engenharia-classificacao">Classificação de projetos</a>
-      <a href="#engenharia-cidades">Manchas e municípios</a>
+    <nav className="engineering-overview-nav" aria-label="Navegação da Engenharia">
+      <a href="#engenharia-aprovacoes">Resumo e situação</a>
+      <a href="#engenharia-projetos">Cadastro único GIS</a>
+      <a href="#engenharia-municipios">Cinco municípios</a>
+      <a href="#engenharia-estruturas">Reservatórios, boosters e EEEs</a>
     </nav>
-    <section id="engenharia-redes" className="panel engineering-totals" aria-label="Consolidação de economias e metragem">
-      <SegmentAmounts title="Água" gis={gisProjects} projects={visible.filter(p => p.segment_type === 'WATER')}/><SegmentAmounts title="Esgoto" gis={gisProjects} projects={visible.filter(p => p.segment_type === 'SEWER')}/><SegmentAmounts title="Total" gis={gisProjects} projects={visible}/>
-    </section>
-    {!notice && <EngineeringWaterLinearSection projects={linearVisible} canEdit={canEdit} contractId={contractId} onSaved={() => setFeedback('Atualização de obra linear salva. Histórico preservado.')}/>}
-
-    <section className="panel engineering-sewer-overview" aria-label="Projetos de Esgoto — Base GIS e dados técnicos">
-      <header className="engineering-sewer-head"><div><span className="water-linear-eyebrow">ACOMPANHAMENTO DE ENTREGAS</span><h2>Projetos de Esgoto · Cadastro GIS</h2><p>Todos os projetos de Esgoto estão cadastrados por mancha GIS. As economias são exibidas na classificação e nas consolidações; métricas técnicas de aprovação e extensão só aparecem quando cadastradas.</p></div></header>
-      {(() => {
-        const sewer = visible.filter(project => project.segment_type === 'SEWER');
-        const total = summarizeEngineering(sewer);
-        return <>
-          <div className="engineering-sewer-kpis">
-            <article><span>Projetos de Esgoto</span><strong>{total.count}</strong><small>Projetos ativos nos filtros</small></article>
-            <article><span>Concepções aprovadas · técnico</span><strong>{sewer.filter(p=>p.current?.concept_status!=null).length?total.approved:'—'}</strong><small>{sewer.filter(p=>p.current?.concept_status!=null).length?'Projetos com situação técnica registrada':'Ainda não informado; status GIS é independente'}</small></article>
-            <article><span>Executivos finalizados · técnico</span><strong>{sewer.filter(p=>p.current?.executive_status!=null).length?total.completed:'—'}</strong><small>{sewer.filter(p=>p.current?.executive_status!=null).length?'Projetos com situação técnica registrada':'Ainda não informado; status GIS é independente'}</small></article>
-            <article><span>Metragem aprovada</span><Amount metric={total.length} meters/><small>Sem conversão em economias</small></article>
-          </div>
-          <div className="engineering-sewer-table-wrap"><table>
-            <thead><tr><th>Município</th><th>Projetos</th><th>Concepções aprovadas</th><th>Executivos finalizados</th><th>Rede aprovada</th></tr></thead>
-            <tbody>{municipalities.filter(city => !filters.city || city === filters.city).map(city => {
-              const items=sewer.filter(project => project.municipality === city);
-              const summary=summarizeEngineering(items);
-              return <tr key={city}><th scope="row">{city}</th><td>{summary.count}</td><td>{summary.approved}</td><td>{summary.completed}</td><td>{summary.length.value === null ? 'Aguardando dados' : format(summary.length.value,true)}{summary.length.partial ? ' · parcial' : ''}</td></tr>;
-            })}</tbody>
-          </table></div>
-          <p className="engineering-sewer-context">O detalhamento por mancha permanece nos projetos existentes. A abertura de Esgoto por diâmetro depende do respectivo cadastro técnico; não será inferida da metragem total.</p>
-        </>;
-      })()}
-    </section>
-    <div id="engenharia-estruturas" className="engineering-section-label"><h2>Obras localizadas</h2><p>Estruturas existentes, situação técnica, orçamento e histórico permanente.</p></div>
+    <EngineeringProjectHub projects={visible} gis={gisProjects} reviews={reviewRows} management={managementRows} network={networkRows} canEdit={canEdit}/>
+    <div id="engenharia-estruturas" className="engineering-section-label"><h2>Obras localizadas</h2><p>Reservatórios, boosters e EEEs permanecem em cadastro de estruturas, separado dos trechos lineares.</p></div>
     <LocalizedWorksEngineering role={role} contractId={contractId} projects={projects} initialWorks={localizedWorks} notice={localizedNotice} readOnly={director}/>
-    {canEdit && editing && <EngineeringForm key={editing === 'new' ? 'new' : editing.id} project={editing === 'new' ? null : editing} categories={categories} contractId={contractId!} onClose={() => setEditing(null)} onSaved={() => {setEditing(null); setFeedback('Atualização salva. Histórico preservado.');}}/>}
-    <EngineeringReviewStatus projects={visible} initial={reviewRows} gis={gisProjects} canEdit={canEdit} onEdit={project=>{setEditing(project);requestAnimationFrame(()=>document.getElementById('engineering-form')?.scrollIntoView({behavior:'smooth'}));}}/>
     <details className="panel engineering-project-history">
-      <summary>Consultar históricos técnicos dos projetos</summary>
-      {visible.length===0?<p>Não há projetos nos filtros selecionados.</p>:visible.map(p=><div className="engineering-history-item" key={p.id}>
+      <summary>Histórico técnico anterior · 13 projetos de Água preservados</summary>
+      {visible.filter(p=>p.current).map(p=><div className="engineering-history-item" key={p.id}>
         <strong>{p.project_name}</strong><small>{p.municipality} · {segments[p.segment_type]}</small>
         <History projectId={p.id} linear={p.project_category==='WATER_LINEAR'&&p.project_type==='PE'}/>
       </div>)}
     </details>
-    <div id="engenharia-cidades" className="engineering-section-label"><h2>Projetos por município e mancha</h2></div>
-    <section className="engineering-cities" aria-label="Aprovações por cidade">{municipalities.filter(city => !filters.city || filters.city === city).map(city => {
-      const cityProjects = visible.filter(p => p.municipality === city);
-      return <article className="panel" key={city}><h2>{city}</h2><div className="engineering-city-segments"><SegmentAmounts title="Água" gis={gisProjects} projects={cityProjects.filter(p => p.segment_type === 'WATER')}/><SegmentAmounts title="Esgoto" gis={gisProjects} projects={cityProjects.filter(p => p.segment_type === 'SEWER')}/></div>
-
-      </article>;
-    })}</section>
   </div>;
 }
 
@@ -152,40 +84,4 @@ function History({projectId, linear = false}: {projectId: string; linear?: boole
     ? <p>Status da entrega: {row.delivery_status ? deliveryLabels[row.delivery_status] : 'Não informado'} · Economias: {format(row.approved_economies)} · DE63: {format(row.pead_de63_length_m == null ? null : Number(row.pead_de63_length_m), true)} · DE110: {format(row.pead_de110_length_m == null ? null : Number(row.pead_de110_length_m), true)} · Total: {format(row.approved_length_m == null ? null : Number(row.approved_length_m), true)}</p>
     : <><p>Concepção: {row.concept_status ? conceptLabels[row.concept_status] : 'Não informada'}{row.concept_approved_at ? ` em ${day(row.concept_approved_at)}` : ''} · Executivo: {row.executive_status ? executiveLabels[row.executive_status] : 'Não informado'}{row.executive_completed_at ? ` em ${day(row.executive_completed_at)}` : ''}</p><p>Economias: {format(row.approved_economies)} · Metragem: {format(row.approved_length_m == null ? null : Number(row.approved_length_m), true)}</p></>}
     <small>Registrado em {instant(row.created_at)} · Responsável: {row.created_by}</small>{row.notes && <p>{row.notes}</p>}</div>)}{rows?.length === 0 && <p>Aguardando atualização</p>}{error && <p role="alert">{error}</p>}{busy ? <p role="status">Carregando histórico…</p> : (error || (rows && more)) && <button onClick={() => void load()}>{error ? 'Tentar novamente' : 'Carregar anteriores'}</button>}</details>;
-}
-
-function EngineeringForm({project, categories, contractId, onClose, onSaved}: {project: CurrentProject | null; categories: Category[]; contractId: string; onClose: () => void; onSaved: () => void}) {
-  const router = useRouter(), current = project?.current;
-  const [referenceDate, setReferenceDate] = useState(localDate);
-  const [concept, setConcept] = useState(current?.concept_status ?? 'PENDING');
-  const [executive, setExecutive] = useState(current?.executive_status ?? 'PENDING');
-  const [message, setMessage] = useState(''), [busy, setBusy] = useState(false);
-  async function submit(formData: FormData) {
-    if (busy) return;
-    const raw = Object.fromEntries(formData), parsedProject = projectSchema.safeParse(project ?? raw);
-    const parsedUpdate = updateSchema.safeParse({...raw, concept_approved_at: concept === 'APPROVED' ? raw.concept_approved_at : null, executive_completed_at: executive === 'COMPLETED' ? raw.executive_completed_at : null});
-    if (!parsedProject.success || !parsedUpdate.success) {setMessage('Revise os campos: ' + [...(!parsedProject.success ? parsedProject.error.issues : []), ...(!parsedUpdate.success ? parsedUpdate.error.issues : [])].map(i => `${i.path.join('.')}: ${i.message}`).join(' · ')); return;}
-    setBusy(true); setMessage('Salvando…');
-    try {
-      const db = createClient(); if (!db) throw new Error('Conexão indisponível.');
-      const {data: {user}} = await db.auth.getUser(); if (!user) throw new Error('Sua sessão expirou. Entre novamente.');
-      const {data: profile} = await db.from('profiles').select('role,active').eq('id', user.id).maybeSingle();
-      if (!profile?.active || !canWriteEngineering(profile.role)) throw new Error('Seu perfil não permite editar Engenharia.');
-      const result = project
-        ? await db.from('engineering_project_updates').insert({...parsedUpdate.data, engineering_project_id: project.id})
-        : await db.rpc('create_engineering_project', {p_contract_id: contractId, p_project: parsedProject.data, p_update: parsedUpdate.data});
-      if (result.error) throw new Error(result.error.code === '23505' ? 'Já existe um projeto com essa identificação na cidade, segmento e categoria.' : 'Não foi possível salvar. Verifique os dados e tente novamente.');
-      router.refresh(); onSaved();
-    } catch (error) {setMessage(error instanceof Error ? error.message : 'Não foi possível salvar.');} finally {setBusy(false);}
-  }
-  return <section id="engineering-form" className="panel engineering-form"><h2>{project ? `Atualizar · ${project.project_name}` : 'Cadastrar projeto'}</h2><p>Informe os valores acumulados deste projeto. Deixe em branco o que ainda não foi informado.</p>{project && <p>{project.municipality} · {segments[project.segment_type]} · {categories.find(c => c.code === project.project_category)?.label}</p>}
-    <form action={submit} className="data-form"><fieldset disabled={busy}><div className="fields">{!project && <><label>Cidade<select name="municipality" required><option value="">Selecione</option>{municipalities.map(c => <option key={c}>{c}</option>)}</select></label><label>Segmento<select name="segment_type" required><option value="">Selecione</option>{Object.entries(segments).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>Categoria<select name="project_category" required>{categories.filter(c => c.code !== 'WATER_LINEAR' && c.code !== 'GIS').map(c => <option key={c.code} value={c.code}>{c.label}</option>)}</select></label><label>Projeto / identificação<input name="project_name" maxLength={200} required/></label></>}
-      <label>Data de referência<input type="date" name="reference_date" value={referenceDate} onChange={e => setReferenceDate(e.target.value)} required/></label>
-      <label>Concepção<select name="concept_status" value={concept} onChange={e => setConcept(e.target.value as typeof concept)}>{Object.entries(conceptLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
-      {concept === 'APPROVED' && <label>Data da aprovação<input type="date" name="concept_approved_at" max={referenceDate} defaultValue={current?.concept_approved_at ?? ''} required/></label>}
-      <label>Projeto executivo<select name="executive_status" value={executive} onChange={e => setExecutive(e.target.value as typeof executive)}>{Object.entries(executiveLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
-      {executive === 'COMPLETED' && <label>Data da finalização<input type="date" name="executive_completed_at" max={referenceDate} defaultValue={current?.executive_completed_at ?? ''} required/></label>}
-      <label>Economias aprovadas<input type="number" min="0" max="2147483647" step="1" name="approved_economies" defaultValue={current?.approved_economies ?? ''}/></label><label>Metragem aprovada (m)<input type="number" min="0" max="99999999999.999" step="0.001" name="approved_length_m" defaultValue={current?.approved_length_m ?? ''}/></label><label className="wide">Observação<textarea name="notes" maxLength={2000} defaultValue=""/></label>
-    </div></fieldset><div className="engineering-buttons"><button disabled={busy} type="submit">{busy ? 'Salvando…' : project ? 'Salvar atualização' : 'Cadastrar projeto'}</button><button type="button" disabled={busy} onClick={onClose}>Cancelar</button></div><p role="status" aria-live="polite">{message}</p></form>
-  </section>;
 }
