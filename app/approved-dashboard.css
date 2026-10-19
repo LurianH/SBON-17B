@@ -254,3 +254,5 @@
 .va-plan-targets>small{font-size:9px;color:#5A6463}
 @media(max-width:1350px){.va-app .va-center-grid{grid-template-columns:1fr}.va-goal-upper{grid-template-columns:1fr 1.2fr}}
 @media(max-width:750px){.va-goal-upper,.va-plan-lower{grid-template-columns:1fr}.va-plan-years{grid-template-columns:1fr}.va-plan-timeline{grid-template-columns:1fr}}
+
+.va-traffic{display:inline-flex;align-items:center;gap:5px;border-radius:6px;padding:5px 7px;font-size:10px;font-weight:750;font-style:normal}.va-traffic i{width:9px;height:9px;border-radius:50%;flex:0 0 9px}.va-traffic-unknown{background:#EDF1F1;color:#586663}.va-traffic-unknown i{background:#AAB9B7}.va-time-track span{font-variant-numeric:tabular-nums}
