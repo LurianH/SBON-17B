@@ -260,3 +260,14 @@
 .va-time-area{min-width:0}.va-project-progress{height:9px;border-radius:7px;background:#E1EBE9;overflow:hidden;margin:2px 0 5px}.va-project-progress>i{display:block;height:100%;background:#007977;border-radius:7px;min-width:0}.va-project-progress-label{display:block;color:#0E4E4C;font-size:10px;font-weight:700;margin-bottom:15px}.va-time-area .va-time-track{margin-top:8px}
 
 .va-plan-signal{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:6px 0}.va-plan-signal b{font-size:10px;color:#0E4E4C}.va-plan-signal small{font-size:9px;color:#64706e;line-height:1.3;width:100%}.va-signal-dot{display:inline-block;width:10px;height:10px;border-radius:50%;flex:0 0 10px}.va-signal-incompleto{background:#9ba8a6}.va-signal-verde{background:#198753}.va-signal-amarelo{background:#e2a01c}.va-signal-vermelho{background:#c63d32}
+
+
+/* Barras duplas por sistema — execução e entrega de projetos */
+.va-goals-rev .va-double-progress{padding-left:0}
+.va-goals-rev .va-measure{margin-top:10px}
+.va-goals-rev .va-measure-heading{display:flex;justify-content:space-between;gap:8px;align-items:baseline;margin-bottom:6px}
+.va-goals-rev .va-measure-heading b{font-size:11px;color:#123149}
+.va-goals-rev .va-measure-heading small{font-size:10px;color:#5A6463;text-align:right}
+.va-goals-rev .va-measure .va-progress{height:10px;background:#E5EDEC}
+.va-goals-rev .va-measure .va-goal-numbers{margin-top:6px;font-size:10px}
+.va-goals-rev .va-measure+.va-measure{margin-top:15px}
