@@ -17,8 +17,9 @@ export type EngineeringReleaseSummary={
  water:ReleasedSegment;sewer:ReleasedSegment;projects:number;
 };
 export type EngineeringReviewSnapshot={engineering_project_id:string;status:string};
+export type NetworkReleaseRow={engineering_project_id:string;length_m:string|number;segment_status:string;active:boolean};
 
-export function summarizeEngineeringRelease(projects:Project[],updates:Update[],reviews:EngineeringReviewSnapshot[]):EngineeringReleaseSummary{
+export function summarizeEngineeringRelease(projects:Project[],updates:Update[],reviews:EngineeringReviewSnapshot[],networkRows:NetworkReleaseRow[]=[]):EngineeringReleaseSummary{
  const eligibleIds=new Set(reviews.filter(row=>(RELEASED_REVIEW_STATUSES as readonly string[]).includes(row.status)).map(row=>row.engineering_project_id));
  const eligible=currentProjects(projects,updates).filter(project=>eligibleIds.has(project.id));
  const metric=(list:CurrentProject[],field:'approved_economies'|'approved_length_m'):ReleasedMetric=>{
@@ -27,9 +28,20 @@ export function summarizeEngineeringRelease(projects:Project[],updates:Update[],
   return {value:known.length?known.reduce<number>((sum,value)=>sum+Math.round(Number(value)*scale),0)/scale:null,
     missing:list.length-known.length};
  };
+ const networkForProject=(project:CurrentProject):number|null=>{
+   const rows=networkRows.filter(row=>row.engineering_project_id===project.id&&row.active);
+   if(rows.length===0)return project.current?.approved_length_m==null?null:Number(project.current.approved_length_m);
+   const accepted=rows.filter(row=>row.segment_status==='APPROVED'||row.segment_status==='EXECUTED');
+   if(accepted.length===0)return null;
+   return accepted.reduce((n,row)=>n+Math.round(Number(row.length_m)*1000),0)/1000;
+ };
+ const networkMetric=(list:CurrentProject[]):ReleasedMetric=>{
+  const valid=list.map(networkForProject).filter((v):v is number=>v!==null);
+  return {value:valid.length?valid.reduce((n,v)=>n+Math.round(v*1000),0)/1000:null,missing:list.length-valid.length};
+ };
  const segment=(key:'WATER'|'SEWER'):ReleasedSegment=>{
   const list=eligible.filter(project=>project.segment_type===key);
-  return {projects:list.length,economies:metric(list,'approved_economies'),network:metric(list,'approved_length_m')};
+  return {projects:list.length,economies:metric(list,'approved_economies'),network:networkMetric(list)};
  };
  return {water:segment('WATER'),sewer:segment('SEWER'),projects:eligible.length};
 }
@@ -85,7 +97,15 @@ export async function loadDashboardEngineering(db: SupabaseClient, contractId: s
   if(reviews.error||!reviews.data){
    return {...base,releaseSummary:null};
   }
-  const release=summarizeEngineeringRelease(projects,updates,reviews.data as EngineeringReviewSnapshot[]);
+  const networkRows:NetworkReleaseRow[]=[];
+  for(let offset=0;;offset+=500){
+   const net=await db.from('engineering_project_network_segments').select('engineering_project_id,length_m,segment_status,active')
+     .in('engineering_project_id',projects.map(p=>p.id)).eq('active',true).order('id').range(offset,offset+499);
+   if(net.error)return {...base,releaseSummary:null,engineeringBreakdown:null,available:null,networkApproved:null};
+   networkRows.push(...net.data as NetworkReleaseRow[]);
+   if(net.data.length<500)break;
+  }
+  const release=summarizeEngineeringRelease(projects,updates,reviews.data as EngineeringReviewSnapshot[],networkRows);
   // Indicadores gerenciais: somente projetos liberados, nunca o conjunto total
   // de projetos GIS sem dados técnicos. Resultados incompletos não viram metas.
   return {
