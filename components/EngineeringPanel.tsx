@@ -98,7 +98,7 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
     </section>
     {!notice && <EngineeringWaterLinearSection projects={linearVisible} canEdit={canEdit} contractId={contractId} onSaved={() => setFeedback('Atualização de obra linear salva. Histórico preservado.')}/>}
 
-    <section className="panel engineering-sewer-overview" aria-label="Projetos de Esgoto — Obras Lineares">
+    <section className="panel engineering-sewer-overview" aria-label="Projetos de Esgoto — Base GIS e dados técnicos">
       <header className="engineering-sewer-head"><div><span className="water-linear-eyebrow">ACOMPANHAMENTO DE ENTREGAS</span><h2>Projetos de Esgoto · Cadastro GIS</h2><p>Todos os projetos de Esgoto estão cadastrados por mancha GIS. As economias são exibidas na classificação e nas consolidações; métricas técnicas de aprovação e extensão só aparecem quando cadastradas.</p></div></header>
       {(() => {
         const sewer = visible.filter(project => project.segment_type === 'SEWER');
@@ -106,8 +106,8 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
         return <>
           <div className="engineering-sewer-kpis">
             <article><span>Projetos de Esgoto</span><strong>{total.count}</strong><small>Projetos ativos nos filtros</small></article>
-            <article><span>Concepções aprovadas</span><strong>{total.approved} / {total.count}</strong><small>{total.conceptPercent === null ? 'Sem projetos cadastrados' : `${total.conceptPercent.toFixed(1).replace('.', ',')}% do total`}</small></article>
-            <article><span>Executivos finalizados</span><strong>{total.completed} / {total.count}</strong><small>{total.executivePercent === null ? 'Sem projetos cadastrados' : `${total.executivePercent.toFixed(1).replace('.', ',')}% do total`}</small></article>
+            <article><span>Concepções aprovadas · técnico</span><strong>{sewer.filter(p=>p.current?.concept_status!=null).length?total.approved:'—'}</strong><small>{sewer.filter(p=>p.current?.concept_status!=null).length?'Projetos com situação técnica registrada':'Ainda não informado; status GIS é independente'}</small></article>
+            <article><span>Executivos finalizados · técnico</span><strong>{sewer.filter(p=>p.current?.executive_status!=null).length?total.completed:'—'}</strong><small>{sewer.filter(p=>p.current?.executive_status!=null).length?'Projetos com situação técnica registrada':'Ainda não informado; status GIS é independente'}</small></article>
             <article><span>Metragem aprovada</span><Amount metric={total.length} meters/><small>Sem conversão em economias</small></article>
           </div>
           <div className="engineering-sewer-table-wrap"><table>
