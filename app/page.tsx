@@ -32,11 +32,14 @@ function Kpi({icon:Icon,title,value,note}:{icon:typeof Target,title:string,value
 }
 function GoalRow({system,goal,approved,executedTotal,icon:Icon}:{system:'Água'|'Esgoto';goal:number|null;approved:number|null;executedTotal:number|null;icon:typeof Droplets}){
  const engineeringRatio=ratio(approved,goal);
- const confirmedZero=executedTotal===0;
+ const executionKnown=executedTotal===0;
+ const projectBalance=goal!==null&&approved!==null?Math.max(0,goal-approved):null;
  return <div className="va-goal-row">
   <div className="va-goal-system"><Icon size={30} className={system==='Água'?'va-water':'va-sewer'}/><div><b>{system}</b><small>Meta: {goal===null?absence:count(goal)+' economias'}</small></div></div>
-  <div className="va-goal-graphic"><div className="va-progress va-progress-empty" aria-label={'Execução de '+system+' ainda não segregada por sistema'}><span/></div><div className="va-goal-numbers"><span>Executadas: <b>{confirmedZero?'0':'—'}</b></span><span>A executar: <b>{confirmedZero?count(goal):'—'}</b></span></div><small className="va-goal-context">Aprovadas na Engenharia: {count(approved)}{engineeringRatio===null?'':' ('+percentage(engineeringRatio)+' da meta)'}</small></div>
-  <div className="va-goal-percent"><strong>—</strong><small>execução por sistema pendente</small></div>
+  <div className="va-goal-graphic va-double-progress">
+   <div className="va-measure"><div className="va-measure-heading"><b>Execução</b><small>{executionKnown?'0%':'Sem segregação por sistema'}</small></div><div className="va-progress" role="progressbar" aria-label={'Execução de '+system} aria-valuemin={0} aria-valuemax={100} aria-valuenow={executionKnown?0:undefined}><span style={{width:'0%',background:'#1879C4'}}/></div><div className="va-goal-numbers"><span>Executadas: <b>{executionKnown?'0':'—'}</b></span><span>A executar: <b>{executionKnown?count(goal):'—'}</b></span></div></div>
+   <div className="va-measure"><div className="va-measure-heading"><b>Projetos / Engenharia</b><small>{engineeringRatio===null?'Aguardando quantitativos':percentage(engineeringRatio)+' da meta'}</small></div><div className="va-progress" role="progressbar" aria-label={'Projetos aprovados '+system} aria-valuemin={0} aria-valuemax={100} aria-valuenow={engineeringRatio===null?undefined:Math.min(100,Math.max(0,engineeringRatio))}><span style={{width:engineeringRatio===null?'0%':Math.min(100,Math.max(0,engineeringRatio))+'%',background:'#007977'}}/></div><div className="va-goal-numbers"><span>Aprovadas: <b>{count(approved)}</b></span><span>Saldo da meta: <b>{count(projectBalance)}</b></span></div></div>
+  </div>
  </div>;
 }
 type StainState={totals:Record<'WATER'|'SEWER',number>;counts:Record<'WATER'|'SEWER',Record<string,number>>};
