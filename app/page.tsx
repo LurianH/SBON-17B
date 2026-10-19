@@ -106,8 +106,6 @@ export default function Dashboard(){
  if(!data)return <div className="va-loading">Carregando painel gerencial Vitalux…</div>;
  // Desagregação contratual confirmada apenas para 2026; não inferir sistemas de outros anos.
  const targetWater=data.targetBreakdown?.water??(data.targetYear===2026?352:null),targetSewer=data.targetBreakdown?.sewer??(data.targetYear===2026?1357:null);
- const engWater=data.engineeringBreakdown?.waterEconomies??null,engSewer=data.engineeringBreakdown?.sewerEconomies??null;
- const netWater=data.engineeringBreakdown?.waterNetwork??null,netSewer=data.engineeringBreakdown?.sewerNetwork??null;
  const release=data.releaseSummary;
  const releasedEconomies=release?knownReleased(release.water.economies.value,release.sewer.economies.value):null;
  const releasedNetwork=release?knownReleased(release.water.network.value,release.sewer.network.value):null;
