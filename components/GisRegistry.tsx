@@ -118,7 +118,7 @@ export function GisRegistry({rows,role}:{rows:GisSystemRow[];role:string}) {
    <p className="gis-count">{filtered.length} manchas exibidas de {current.length} do sistema selecionado</p>
    <div className="gis-scroll"><table><thead><tr><th>GIS / Bairro</th><th>Município</th><th>Recorte</th><th>Economias de Água</th><th>Economias de Esgoto</th><th>Status da aprovação</th></tr></thead><tbody>
     {filtered.map(row=><tr key={row.id+row.segment_type}>
-     <td><strong>{row.gis_code}</strong><small>{row.neighborhood||'Bairro não informado'}</small>{row.source_sheet==='Planilha2'&&<small className="gis-tag">Nova</small>}</td>
+     <td><strong>{row.gis_code}</strong><small>{row.neighborhood||'Bairro não informado'}</small>{row.linked_project_name&&<small>Projeto vinculado: {row.linked_project_name}</small>}{row.source_sheet==='Planilha2'&&<small className="gis-tag">Nova</small>}</td>
      <td>{row.municipality}</td><td>{row.settlement_type??'—'}</td><td>{amount(row.economies_ica)}</td><td>{amount(row.economies_ice)}</td>
      <td className="gis-status-cell">{row.cancelled?<strong className="gis-cancelled">Cancelado</strong>
       :row.segment_type==='WATER'&&row.engineering_project_id?<div><strong>{labels[row.effective_status]}</strong><Link href="/engenharia#engenharia-classificacao">Editar na Engenharia →</Link></div>
