@@ -114,15 +114,6 @@ export default function Dashboard(){
  const partialRelease=withoutEconomies>0||withoutNetwork>0;
  const releasedStains=stainState?(['WATER','SEWER'] as const).reduce((sum,system)=>sum+(stainState.counts[system].NO_OBJECTION??0)+(stainState.counts[system].NO_OBJECTION_RESERVATIONS??0),0):null;
  const totalStains=stainState?stainState.totals.WATER+stainState.totals.SEWER:null;
- const engineeringDeadline=new Date(2027,4,31,23,59,59).getTime();
- const engineeringStart=new Date(2026,6,20).getTime();
- const engineeringElapsed=Math.max(0,Math.min(1,(Date.now()-engineeringStart)/(engineeringDeadline-engineeringStart)));
- const engineeringCoverage=releasedEconomies===null?null:releasedEconomies/officialContractTotal;
- const engineeringPlannedEconomies=Math.round(officialContractTotal*engineeringElapsed);
- const engineeringRemainingDays=Math.max(0,Math.ceil((engineeringDeadline-Date.now())/86400000));
- const engineeringRequiredDaily=releasedEconomies===null||engineeringRemainingDays===0?null:Math.max(0,(officialContractTotal-releasedEconomies)/engineeringRemainingDays);
- const engineeringComplete=withoutEconomies===0 && release!==null && releasedEconomies!==null;
- const engineeringSignal=engineeringCoverage===null||!engineeringComplete?'INCOMPLETO':engineeringCoverage>=engineeringElapsed*.9?'VERDE':engineeringCoverage>=engineeringElapsed*.7?'AMARELO':'VERMELHO';
  const annualGoal=(year:number)=>{const dbTotal=annualTargets.find(row=>row.year===year)?.total;return dbTotal&&dbTotal>0?dbTotal:officialAnnualTargets[year]??null};
  const projected=ratio(data.annualProjection,data.target);
  const projectedWidth=projected===null?0:Math.max(0,Math.min(100,projected));
@@ -140,18 +131,26 @@ export default function Dashboard(){
      <div className="va-goal-upper">
       <div className="va-goal-systems"><GoalRow system="Água" goal={targetWater} approved={engWater} executedTotal={data.executed} icon={Droplets}/><GoalRow system="Esgoto" goal={targetSewer} approved={engSewer} executedTotal={data.executed} icon={Waves}/></div>
       <div className="va-plan-timelines">
-       <h3>CRONOGRAMA DO CONTRATO</h3>
-       <div className="va-plan-timeline"><div><b>Execução contratual</b><small>Meta do contrato: {count(officialContractTotal)} economias · até 2028</small></div><div className="va-time-track"><span>2026 · {count(annualGoal(2026))}</span><span>2027 · {count(annualGoal(2027))}</span><span>2028 · {count(annualGoal(2028))}</span></div></div>
-       <div className="va-plan-timeline"><div><b>Projetos / manchas</b><small>Meta da Engenharia: {count(officialContractTotal)} economias em projetos liberados até 31/05/2027</small><small className="va-project-delivery">Liberadas: {count(releasedEconomies)} economias{withoutEconomies>0?" (parcial — "+withoutEconomies+" mancha(s) sem quantitativo)":""} · {releasedStains===null?"Manchas: em apuração":count(releasedStains)+" de "+count(totalStains)+" manchas liberadas"}</small></div><div className="va-time-area">
- <div className="va-project-reference"><span>Meta de projetos até 31/05/2027: <b>{count(officialContractTotal)} economias</b></span><span>Já liberadas com quantitativos conhecidos: <b>{count(releasedEconomies)} economias</b>{withoutEconomies>0?' (parcial)':''}</span></div>
- <div className="va-project-progress" role="progressbar" aria-label="Economias liberadas nos projetos" aria-valuemin={0} aria-valuemax={officialContractTotal} aria-valuenow={releasedEconomies??0}><i style={{width:releasedEconomies===null?'0%':Math.min(100,releasedEconomies/officialContractTotal*100)+'%'}}/></div>
- <small className="va-project-progress-label">{releasedEconomies===null?'Aguardando quantitativos':percentage(releasedEconomies/officialContractTotal*100)+' da meta conhecida como liberada'} · Saldo não comprovado: {releasedEconomies===null?'—':count(Math.max(0,officialContractTotal-releasedEconomies))}</small>
- <div className="va-plan-signal"><span className={"va-signal-dot va-signal-"+engineeringSignal.toLowerCase()}/><b>{engineeringSignal==='INCOMPLETO'?'Indicador de prazo em apuração — cadastro parcial':engineeringSignal==='VERDE'?'Ritmo compatível com referência linear':engineeringSignal==='AMARELO'?'Atenção ao ritmo de liberações':'Ritmo abaixo da referência linear'}</b><small>Para concluir até 31/05/2027, seriam necessárias aproximadamente <b>{engineeringRequiredDaily===null?'—':count(engineeringRequiredDaily,1)+' economias/dia'}</b> a partir de agora, considerando somente as liberações conhecidas. Estimativa, não meta oficial mensal.</small></div>
- <div className="va-time-track va-time-project"><span>Assinatura 20/07/2026</span><span>Hoje</span><span>Meta 31/05/2027</span></div></div>
-      </div>
-     </div>
-     </div>
-     <div className="va-plan-lower">
+ <h3>CRONOGRAMA · METAS DISTINTAS</h3>
+ <div className="va-separated-goal">
+  <b>1 · Execução física contratual</b>
+  <small>Meta de 14.421 economias concluídas, conforme os recortes de execução.</small>
+  <div className="va-time-track"><span>2026 · 1.709</span><span>2027 · 8.124</span><span>2028 · 4.588</span></div>
+  <div className="va-separate-summary"><span>Executadas: <b>{count(data.executed)}</b></span><span>Saldo contratual: <b>{data.executed===null?'—':count(Math.max(0,officialContractTotal-data.executed))}</b></span></div>
+  <small>Ritmo físico: {data.annualProjection===null?'aguardando série suficiente de economias executadas':count(data.annualProjection)+' economias projetadas para '+data.targetYear}. Não converter metros de rede em economias.</small>
+ </div>
+ <div className="va-separated-goal">
+  <b>2 · Engenharia — projetos liberados</b>
+  <small>Marco 2026: 1.709 economias em projetos. Marco final 31/05/2027: outras 12.712 (total 14.421).</small>
+  <div className="va-time-track va-time-project"><span>20/07/2026</span><span>31/12/2026 · 1.709</span><span>31/05/2027 · 14.421</span></div>
+  <div className="va-project-progress" role="progressbar" aria-label="Economias liberadas pela Engenharia" aria-valuemin={0} aria-valuemax={officialContractTotal} aria-valuenow={releasedEconomies??0}><i style={{width:releasedEconomies===null?'0%':Math.min(100,releasedEconomies/officialContractTotal*100)+'%'}}/></div>
+  <div className="va-separate-summary"><span>Liberadas conhecidas: <b>{count(releasedEconomies)}</b>{withoutEconomies>0?' · parcial':''}</span><span>Saldo não comprovado: <b>{releasedEconomies===null?'—':count(Math.max(0,officialContractTotal-releasedEconomies))}</b></span></div>
+  <small>{releasedStains===null?'Manchas: aguardando cadastro':count(releasedStains)+' de '+count(totalStains)+' manchas liberadas'}. Sem produtividade diária de projetos. Semáforo por marcos: aguardando quantitativos e cronograma validado.</small>
+ </div>
+</div>
+</div>
+</div>
+<div className="va-plan-lower">
       <div className="va-plan-assessment"><h3>LEITURA DO CRONOGRAMA E DO ATAQUE DAS MANCHAS</h3><p>Cobertura da carteira de projetos frente às metas anuais de execução</p><div className="va-plan-years">{[2026,2027,2028].map(year=><div key={year}><b>{year}</b><span>Meta: {count(annualGoal(year))} economias</span><small>Projetos para estas economias: aguardando vínculo das manchas</small><em className="va-traffic va-traffic-unknown"><i/>Semáforo: não avaliado</em></div>)}</div></div>
       <div className="va-plan-targets"><h3>METAS POR ANO</h3>{[2026,2027,2028].map(year=><div key={year}><span>{year}</span><b>{count(annualGoal(year))}</b></div>)}<div className="va-plan-total"><span>Total</span><b>{count(officialContractTotal)}</b></div><small>Economias · recorte oficial informado. Números zerados no cadastro serão sinalizados para correção.</small></div>
      </div>
