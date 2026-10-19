@@ -6,7 +6,7 @@ import {municipalities,segments,type CurrentProject} from '@/lib/engineering';
 import {projectReviewLabels,type ProjectReviewRow,type ProjectReviewStatus} from '@/lib/project-review-status';
 import type {GisProjectRow} from '@/lib/gis-project-model';
 import {deliveryNames,formatKm,fmt,responsibleNames,segmentNames,validMaterials,
- type ProjectManagementRow,type ProjectNetworkRow,type Responsible,type Delivery,type SegmentStatus} from '@/lib/engineering-unified-model';
+ type ProjectManagementRow,type ProjectNetworkRow,type EngineeringExecutionRow,type Responsible,type Delivery,type SegmentStatus} from '@/lib/engineering-unified-model';
 import './engineering-project-hub.css';
 
 type Group={id:string;code:string;city:string;neighborhood:string|null;members:{project:CurrentProject;gis:GisProjectRow}[]};
@@ -65,9 +65,9 @@ function ProjectHistory({projectId}:{projectId:string}){
   {events?.map(ev=><div key={ev.id}><strong>{ev.kind}</strong><span>{ev.description}</span><small>{new Date(ev.date).toLocaleString('pt-BR')}</small></div>)}
  </details>;
 }
-export function EngineeringProjectHub({projects,gis,reviews,management,network,canEdit}:{
+export function EngineeringProjectHub({projects,gis,reviews,management,network,execution,canEdit}:{
  projects:CurrentProject[];gis:GisProjectRow[];reviews:ProjectReviewRow[];
- management:ProjectManagementRow[];network:ProjectNetworkRow[];canEdit:boolean;
+ management:ProjectManagementRow[];network:ProjectNetworkRow[];execution:EngineeringExecutionRow[];canEdit:boolean;
 }){
  const router=useRouter();
  const [search,setSearch]=useState('');
@@ -82,6 +82,19 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,c
   const prev=segMap.get(part.engineering_project_id)??[];
   prev.push(part);segMap.set(part.engineering_project_id,prev);
  }
+ const latestExecution=new Map<string,EngineeringExecutionRow>();
+ for(const row of execution){
+  const key=row.engineering_project_id+'|'+row.material+'|'+row.diameter_label;
+  const prev=latestExecution.get(key);
+  if(!prev||row.reference_date>prev.reference_date)latestExecution.set(key,row);
+ }
+ const executedPhysical=(p:CurrentProject)=>{
+  const activeSnapshots=[...latestExecution.values()].filter(row=>row.engineering_project_id===p.id);
+  const recordedKeys=new Set(activeSnapshots.map(row=>row.material+'|'+row.diameter_label));
+  const withoutSnapshots=(segMap.get(p.id)??[]).filter(part=>part.segment_status==='EXECUTED'&&!recordedKeys.has(part.material+'|'+part.diameter_label));
+  return activeSnapshots.reduce((sum,row)=>sum+Number(row.cumulative_length_m),0)+
+    withoutSnapshots.reduce((sum,part)=>sum+Number(part.length_m),0);
+ };
  const statusOf=(id:string):ProjectReviewStatus=>statusesLocal[id]??reviewed.get(id)??'UNCLASSIFIED';
  const ids=new Set(projects.map(p=>p.id));
  const projectById=new Map(projects.map(p=>[p.id,p]));
@@ -101,7 +114,7 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,c
   return parts.filter(part=>kind==='ALL'||(kind==='APPROVED'&&part.segment_status!=='PROJECTED')||(kind==='EXECUTED'&&part.segment_status==='EXECUTED'))
    .reduce((sum,part)=>sum+Number(part.length_m),0);
  };
- const recorded=(rows:CurrentProject[],status:'ALL'|'APPROVED'|'EXECUTED')=>rows.reduce((sum,p)=>sum+sumParts(p,status),0);
+ const recorded=(rows:CurrentProject[],status:'ALL'|'APPROVED'|'EXECUTED')=>rows.reduce((sum,p)=>sum+(status==='EXECUTED'?executedPhysical(p):sumParts(p,status)),0);
  const managed=(p:CurrentProject)=>controls.get(p.id);
  const delivery=(p:CurrentProject)=>managed(p)?.delivery_status??p.current?.delivery_status??null;
  const onlyAvailable=projects.filter(p=>statusOf(p.id)!=='CANCELLED');
@@ -258,7 +271,13 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,c
         <span>Economias aprovadas: <b>{blank(p.current?.approved_economies)}</b></span>
         <span>Rede aprovada: <b>{formatKm(sumParts(p,'APPROVED'))}</b></span>
         <span>Rede projetada: <b>{formatKm(sumParts(p,'ALL'))}</b></span>
+        {executedPhysical(p)>0&&<span>Rede executada aferida: <b>{formatKm(executedPhysical(p))}</b></span>}
        </div>
+       {execution.some(row=>row.engineering_project_id===p.id)&&<p className="eph-physical-note">
+        Execução física por diâmetro: {[...latestExecution.values()].filter(row=>row.engineering_project_id===p.id).map(row=>
+         row.material+' '+row.diameter_label+' · '+fmt(Number(row.cumulative_length_m))+' m acumulados em '+new Date(row.reference_date+'T12:00:00').toLocaleDateString('pt-BR')).join(' | ')}.
+        {p.id==='9c8c09c3-a013-4976-ad93-0bcacb6c297b'?' Última execução acrescida até 15/10; 16/10 confirmou o mesmo acumulado.':''}
+       </p>}
        <div className="eph-fieldset">
         <label>Situação do projeto
          <select value={status} disabled={!canEdit||busy||record.cancelled} onChange={e=>void saveStatus(p,e.target.value as ProjectReviewStatus,record)}>
