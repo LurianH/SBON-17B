@@ -7,7 +7,7 @@ import {LOCALIZED_DATABASE_ENABLED, loadLocalizedWorks} from '@/lib/localized-wo
 import type {LocalizedWorkRow} from '@/lib/localized-works-model';
 import type {ProjectReviewRow} from '@/lib/project-review-status';
 import type {GisProjectRow} from '@/lib/gis-project-model';
-import type {ProjectManagementRow,ProjectNetworkRow} from '@/lib/engineering-unified-model';
+import type {ProjectManagementRow,ProjectNetworkRow,EngineeringExecutionRow} from '@/lib/engineering-unified-model';
 import './engineering.css';
 
 export const dynamic = 'force-dynamic';
@@ -71,11 +71,23 @@ export default async function EngineeringPage() {
       }
     }
   }
+  let executionRows:EngineeringExecutionRow[]=[];
+  if(contract&&!notice&&projects.length){
+    const ids=projects.map(project=>project.id);
+    for(let offset=0;;offset+=500){
+      const snapshots=await db.from('engineering_project_execution_progress')
+       .select('engineering_project_id,reference_date,material,diameter_label,period_length_m,cumulative_length_m,executed_economies')
+       .in('engineering_project_id',ids).order('reference_date').range(offset,offset+499);
+      if(snapshots.error){notice='Não foi possível consultar a execução por projeto.';break;}
+      executionRows.push(...snapshots.data as EngineeringExecutionRow[]);
+      if(snapshots.data.length<500)break;
+    }
+  }
   let reviewRows: ProjectReviewRow[]=[];
   if(contract&&!notice&&projects.length>0){
     const result=await db.from('engineering_project_review_status').select('engineering_project_id,status')
       .in('engineering_project_id',projects.map(project=>project.id));
     if(!result.error&&result.data)reviewRows=result.data as ProjectReviewRow[];
   }
-  return <AppShell title="Engenharia" eyebrow="LIBERAÇÃO DE PROJETOS"><EngineeringPanel projects={projects} updates={updates} categories={categories} role={profile.role} contractId={notice ? null : contract?.id ?? null} notice={notice} localizedWorks={localizedWorks} localizedNotice={localizedNotice} reviewRows={reviewRows} gisProjects={gisProjects} managementRows={managementRows} networkRows={networkRows}/></AppShell>;
+  return <AppShell title="Engenharia" eyebrow="LIBERAÇÃO DE PROJETOS"><EngineeringPanel projects={projects} updates={updates} categories={categories} role={profile.role} contractId={notice ? null : contract?.id ?? null} notice={notice} localizedWorks={localizedWorks} localizedNotice={localizedNotice} reviewRows={reviewRows} gisProjects={gisProjects} managementRows={managementRows} networkRows={networkRows} executionRows={executionRows}/></AppShell>;
 }
