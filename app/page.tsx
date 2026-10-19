@@ -136,8 +136,8 @@ export default function Dashboard(){
   <b>1 · Execução física contratual</b>
   <small>Meta de 14.421 economias concluídas, conforme os recortes de execução.</small>
   <div className="va-time-track"><span>2026 · 1.709</span><span>2027 · 8.124</span><span>2028 · 4.588</span></div>
-  <div className="va-separate-summary"><span>Executadas: <b>{count(data.executed)}</b></span><span>Saldo contratual: <b>{data.executed===null?'—':count(Math.max(0,officialContractTotal-data.executed))}</b></span></div>
-  <small>Ritmo físico: {data.annualProjection===null?'aguardando série suficiente de economias executadas':count(data.annualProjection)+' economias projetadas para '+data.targetYear}. Não converter metros de rede em economias.</small>
+  <div className="va-separate-summary"><span>Executadas em {data.targetYear}: <b>{count(data.executed)}</b></span><span>Saldo da meta anual: <b>{data.executed===null||data.target===null?'—':count(Math.max(0,data.target-data.executed))}</b></span></div>
+  <small>Ritmo físico: {data.annualProjection===null?'aguardando série suficiente de economias executadas':count(data.annualProjection)+' economias projetadas para '+data.targetYear}. Os registros são do ano corrente; não representam automaticamente o acumulado dos três anos.</small>
  </div>
  <div className="va-separated-goal">
   <b>2 · Engenharia — projetos liberados</b>
