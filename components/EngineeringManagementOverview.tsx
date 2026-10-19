@@ -23,6 +23,8 @@ function MeasureLength({value,partial}:{value:number|null;partial:boolean}){
 }
 export function EngineeringManagementOverview({projects,localizedWorks,stains,reviews}:{projects:CurrentProject[];localizedWorks:LocalizedWorkRow[];stains:StainSummary;reviews:ProjectReviewRow[]}){
  const total=summarizeEngineering(projects);
+ const conceptKnown=projects.filter(project=>project.current?.concept_status!=null);
+ const executiveKnown=projects.filter(project=>project.current?.executive_status!=null);
  const statusByProject=new Map(reviews.map(row=>[row.engineering_project_id,row.status]));
  const classified=projects.filter(project=>{const status=statusByProject.get(project.id);return status&&status!=='UNCLASSIFIED';}).length;
  const estatica=projects.filter(p=>p.project_category==='STATIC');
@@ -37,8 +39,8 @@ export function EngineeringManagementOverview({projects,localizedWorks,stains,re
   <div className="em-overview-header"><div><span>PAINEL DE CONTROLE · ENGENHARIA</span><h2>Projetos, aprovação e entregas</h2><p>Resumo baseado exclusivamente nos cadastros atuais do SBON 17B. Os quantitativos detalhados permanecem nas seções abaixo.</p></div><div className="em-overview-actions"><a href="#engenharia-classificacao">Classificar projetos →</a><Link href="/manchas">Consultar manchas GIS →</Link></div></div>
   <div className="em-scorecards">
    <Kpi icon={Layers3} label="Projetos cadastrados" value={number(total.count)} sub={number(classified)+' classificados · '+number(total.count-classified)+' pendentes'}/>
-   <Kpi icon={CheckCheck} label="Concepções aprovadas" value={number(total.approved)} sub={total.count?number(total.conceptPercent??0)+'% dos projetos ativos':'Sem base de projetos'}/>
-   <Kpi icon={ClipboardCheck} label="Executivos finalizados" value={number(total.completed)} sub={total.count?number(total.executivePercent??0)+'% dos projetos ativos':'Sem base de projetos'}/>
+   <Kpi icon={CheckCheck} label="Concepções aprovadas · dados técnicos" value={conceptKnown.length?number(total.approved):'—'} sub={conceptKnown.length?`${number(total.approved)} de ${number(conceptKnown.length)} com status técnico informado`:'Aguardando informação de aprovação técnica'}/>
+   <Kpi icon={ClipboardCheck} label="Executivos finalizados · dados técnicos" value={executiveKnown.length?number(total.completed):'—'} sub={executiveKnown.length?`${number(total.completed)} de ${number(executiveKnown.length)} com status técnico informado`:'Aguardando informação técnica dos executivos'}/>
    <Kpi icon={Building2} label="Contratada Estática" value={number(estatica.length)} sub="Projetos classificados como Estática"/>
   </div>
   <div className="em-highlight-row">
