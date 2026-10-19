@@ -45,7 +45,7 @@ function ProjectHistory({projectId}:{projectId:string}){
   ]);
   if([reviews,manager,segments,technical].some(r=>r.error)){setError('Não foi possível carregar todo o histórico.');return;}
   type Snapshot={responsible?:string|null;delivery_status?:string|null;material?:string;diameter_label?:string;length_m?:number;active?:boolean;segment_status?:string};
-  const summary:typeof events=[];
+  const summary:{id:string;kind:string;date:string;description:string}[]=[];
   for(const r of reviews.data??[])summary.push({id:'status-'+r.id,kind:'Situação do projeto',date:r.changed_at,
     description:projectReviewLabels[r.new_status as ProjectReviewStatus]??String(r.new_status)});
   for(const r of manager.data??[]){const v=r.new_data as Snapshot;summary.push({id:'gestao-'+r.id,kind:'Responsável e entrega',date:r.changed_at,
