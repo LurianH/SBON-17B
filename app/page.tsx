@@ -118,6 +118,7 @@ export default function Dashboard(){
  const totalStains=stainState?stainState.totals.WATER+stainState.totals.SEWER:null;
  const annualGoal=(year:number)=>{const dbTotal=annualTargets.find(row=>row.year===year)?.total;return dbTotal&&dbTotal>0?dbTotal:officialAnnualTargets[year]??null};
  const currentYearGoal=annualGoal(data.targetYear);
+ const systemTotalsMismatch=currentYearGoal!==null&&targetWater!==null&&targetSewer!==null&&targetWater+targetSewer!==currentYearGoal;
  const projected=ratio(data.annualProjection,currentYearGoal);
  const projectedWidth=projected===null?0:Math.max(0,Math.min(100,projected));
  return <VitaluxChrome lastUpdated={data.latestDate} year={data.targetYear}>
@@ -125,7 +126,7 @@ export default function Dashboard(){
    <section className="va-top-grid">
     <Kpi icon={FileText} title="VALOR DO CONTRATO" value={currency(data.contractValue)} note="Contrato consolidado"/>
     <Kpi icon={BarChart3} title="FATURADO NO ANO" value={currency(data.billingYtd)} note="Acumulado do exercício"/>
-    <Kpi icon={Target} title={'META '+data.targetYear} value={currentYearGoal===null?'Em apuração':count(currentYearGoal)+' economias'} note={'Água '+count(targetWater)+' · Esgoto '+count(targetSewer)}/>
+    <Kpi icon={Target} title={'META '+data.targetYear} value={currentYearGoal===null?'Em apuração':count(currentYearGoal)+' economias'} note={systemTotalsMismatch?'Divergência no cadastro por sistema: Água '+count(targetWater)+' + Esgoto '+count(targetSewer):'Água '+count(targetWater)+' · Esgoto '+count(targetSewer)}/>
     <article className="va-card va-projection"><PanelTitle icon={TrendingUp} title="PROJEÇÃO ANUAL"/><div className="va-projection-inner"><div className="va-half-gauge" style={{'--gauge':projectedWidth/2+'%'} as React.CSSProperties}><div><b>{percentage(projected)}</b><small>{projected===null?'Em apuração':'da meta anual'}</small></div></div><p>{projected!==null?'Projeção calculada pela produtividade observada, normalizada por dias de acompanhamento.':data.executed===0&&data.networkExecuted!==null&&data.networkExecuted>0?'Rede executada: '+count(data.networkExecuted,3)+' m. Ainda são 0 economias executadas; não há produtividade de economias para extrapolar a meta anual.':'Projeção aguardando pelo menos três registros ao longo de 14 dias, com avanço positivo e consistente de economias executadas.'}</p></div></article>
    </section>
    <section className="va-center-grid">
