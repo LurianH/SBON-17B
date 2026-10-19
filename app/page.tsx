@@ -115,6 +115,8 @@ export default function Dashboard(){
  const releasedStains=stainState?(['WATER','SEWER'] as const).reduce((sum,system)=>sum+(stainState.counts[system].NO_OBJECTION??0)+(stainState.counts[system].NO_OBJECTION_RESERVATIONS??0),0):null;
  const totalStains=stainState?stainState.totals.WATER+stainState.totals.SEWER:null;
  const annualGoal=(year:number)=>{const dbTotal=annualTargets.find(row=>row.year===year)?.total;return dbTotal&&dbTotal>0?dbTotal:officialAnnualTargets[year]??null};
+ const annualTargetsSum=[2026,2027,2028].reduce((sum,year)=>sum+(annualGoal(year)??0),0);
+ const annualTargetsMismatch=annualTargetsSum!==officialContractTotal;
  const currentYearGoal=annualGoal(data.targetYear);
  const systemTotalsMismatch=currentYearGoal!==null&&targetWater!==null&&targetSewer!==null&&targetWater+targetSewer!==currentYearGoal;
  const projected=ratio(data.annualProjection,currentYearGoal);
@@ -153,7 +155,7 @@ export default function Dashboard(){
  </div>
  <div className="va-plan-lower">
       <div className="va-plan-assessment"><h3>LEITURA DO CRONOGRAMA E DO ATAQUE DAS MANCHAS</h3><p>Cobertura de projetos para atender a execução de cada ano</p><div className="va-plan-years">{[2026,2027,2028].map(year=><div key={year}><b>{year}</b><span>Meta: {count(annualGoal(year))} economias</span><small>{year===2026&&attack2026?'Carteira preliminar de ataque 2026: '+count(attack2026.economies)+' economias em '+count(attack2026.stains)+' manchas (planejado, não liberado; sem vínculo anual validado)':'Economias em projetos atribuídas ao ano: aguardando classificação'}</small><em className="va-traffic va-traffic-unknown"><i/>Semáforo: não avaliado</em></div>)}</div></div>
-      <div className="va-plan-targets"><h3>METAS POR ANO</h3>{[2026,2027,2028].map(year=><div key={year}><span>{year}</span><b>{count(annualGoal(year))}</b></div>)}<div className="va-plan-total"><span>Total</span><b>{count(officialContractTotal)}</b></div><small>Economias · recorte oficial informado. Números zerados no cadastro serão sinalizados para correção.</small></div>
+      <div className="va-plan-targets"><h3>METAS POR ANO</h3>{[2026,2027,2028].map(year=><div key={year}><span>{year}</span><b>{count(annualGoal(year))}</b></div>)}<div className="va-plan-total"><span>Total</span><b>{count(officialContractTotal)}</b></div><small>Economias · recorte oficial informado. {annualTargetsMismatch?'Atenção: soma das metas anuais ('+count(annualTargetsSum)+') difere do total contratual ('+count(officialContractTotal)+'). Revisar cadastro.':'Conferência: soma das metas anuais compatível com o total contratual.'}</small></div>
      </div>
      <p className="va-notice-small">A execução por sistema permanece pendente enquanto não houver origem segregada. A Engenharia deve liberar até maio/2027 projetos para todas as 14.421 economias contratadas. O semáforo depende do avanço comprovado dessas entregas, não apenas da quantidade de manchas.</p>
     </article>
