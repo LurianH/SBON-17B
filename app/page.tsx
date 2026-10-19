@@ -107,7 +107,8 @@ export default function Dashboard(){
  const partialRelease=withoutEconomies>0||withoutNetwork>0;
  const projected=ratio(data.annualProjection,data.target);
  const projectedWidth=projected===null?0:Math.max(0,Math.min(100,projected));
- return <VitaluxChrome lastUpdated={data.latestDate} year={data.targetYear}>\n  <main className="va-main">
+ return <VitaluxChrome lastUpdated={data.latestDate} year={data.targetYear}>
+  <main className="va-main">
    <section className="va-top-grid">
     <Kpi icon={FileText} title="VALOR DO CONTRATO" value={currency(data.contractValue)} note="Contrato consolidado"/>
     <Kpi icon={BarChart3} title="FATURADO NO ANO" value={currency(data.billingYtd)} note="Acumulado do exercício"/>
