@@ -215,3 +215,42 @@
   .va-app .va-status-system:last-child{padding:0}
   .va-app .va-status-detail{gap:14px}
 }
+
+
+/* Metas e cronogramas: revisão isolada, preserva os quatro cards inferiores. */
+.va-app .va-center-grid{grid-template-columns:minmax(0,1.65fr) minmax(0,1fr)}
+.va-app .va-goals-rev{min-width:0}
+.va-goal-upper{display:grid;grid-template-columns:minmax(220px,.85fr) minmax(0,1.25fr);gap:16px;margin-top:14px}
+.va-goals-rev .va-goal-row{grid-template-columns:1fr;gap:6px;margin:0;padding:12px 0}
+.va-goals-rev .va-goal-row+.va-goal-row{margin:0;padding:12px 0}
+.va-goals-rev .va-goal-system b{font-size:15px}
+.va-goals-rev .va-goal-system svg{width:22px}
+.va-goals-rev .va-goal-graphic{padding-left:29px}
+.va-goals-rev .va-goal-percent{display:none}
+.va-goals-rev .va-goal-numbers{font-size:10px}
+.va-goals-rev .va-goal-context{font-size:11px}
+.va-plan-timelines{border:1px solid #E2ECEA;border-radius:9px;background:#F8FBFA;padding:12px;min-width:0}
+.va-plan-timelines h3,.va-plan-lower h3{font-size:12px;color:#0E4E4C;margin:0 0 12px;font-weight:800}
+.va-plan-timeline{display:grid;grid-template-columns:minmax(120px,.9fr) minmax(0,1.2fr);gap:12px;align-items:center;margin:11px 0 20px}
+.va-plan-timeline b,.va-plan-timeline small{display:block}
+.va-plan-timeline b{font-size:12px;color:#123149}
+.va-plan-timeline small{font-size:10px;color:#5A6463;margin-top:4px;line-height:1.3}
+.va-time-track{display:flex;justify-content:space-between;align-items:center;border-top:3px solid #D7E2E1;position:relative;margin-top:10px;gap:3px}
+.va-time-track span{font-size:10px;color:#0E4E4C;position:relative;padding-top:9px;white-space:nowrap}
+.va-time-track span:before{content:"";position:absolute;top:-7px;left:50%;height:10px;width:10px;transform:translateX(-50%);border-radius:50%;background:#fff;border:2px solid #007977}
+.va-time-project span:nth-child(2){color:#B53227;font-weight:800}
+.va-time-project span:nth-child(2):before{border-color:#B53227;background:#B53227}
+.va-plan-lower{border-top:1px solid #D7E2E1;padding-top:15px;margin-top:15px;display:grid;grid-template-columns:minmax(0,1fr) 165px;gap:12px}
+.va-plan-assessment p{font-size:11px;color:#5A6463;margin:0 0 9px}
+.va-plan-years{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.va-plan-years>div{border:1px solid #E2ECEA;background:#F8FBFA;border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.va-plan-years b{color:#123149;font-size:13px}
+.va-plan-years span,.va-plan-years small{font-size:10px;color:#5A6463;line-height:1.35}
+.va-plan-years em{font-style:normal;color:#0E4E4C;font-size:10px;font-weight:700}
+.va-plan-targets{border:1px solid #E2ECEA;border-radius:8px;padding:10px}
+.va-plan-targets>div{display:flex;justify-content:space-between;gap:8px;padding:5px 0;font-size:11px}
+.va-plan-targets>div b{color:#123149}
+.va-plan-targets .va-plan-total{border-top:1px solid #D7E2E1;font-weight:800}
+.va-plan-targets>small{font-size:9px;color:#5A6463}
+@media(max-width:1350px){.va-app .va-center-grid{grid-template-columns:1fr}.va-goal-upper{grid-template-columns:1fr 1.2fr}}
+@media(max-width:750px){.va-goal-upper,.va-plan-lower{grid-template-columns:1fr}.va-plan-years{grid-template-columns:1fr}.va-plan-timeline{grid-template-columns:1fr}}
