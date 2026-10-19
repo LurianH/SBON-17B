@@ -141,16 +141,16 @@ export default function Dashboard(){
  </div>
  <div className="va-separated-goal">
   <b>2 · Engenharia — projetos liberados</b>
-  <small>Marco 2026: 1.709 economias em projetos. Marco final 31/05/2027: outras 12.712 (total 14.421).</small>
+  <small>Meta de projetos: 1.709 economias até 31/12/2026; as 12.712 restantes até 31/05/2027.</small>
   <div className="va-time-track va-time-project"><span>20/07/2026</span><span>31/12/2026 · 1.709</span><span>31/05/2027 · 14.421</span></div>
   <div className="va-project-progress" role="progressbar" aria-label="Economias liberadas pela Engenharia" aria-valuemin={0} aria-valuemax={officialContractTotal} aria-valuenow={releasedEconomies??0}><i style={{width:releasedEconomies===null?'0%':Math.min(100,releasedEconomies/officialContractTotal*100)+'%'}}/></div>
   <div className="va-separate-summary"><span>Liberadas conhecidas: <b>{count(releasedEconomies)}</b>{withoutEconomies>0?' · parcial':''}</span><span>Saldo não comprovado: <b>{releasedEconomies===null?'—':count(Math.max(0,officialContractTotal-releasedEconomies))}</b></span></div>
-  <small>{releasedStains===null?'Manchas: aguardando cadastro':count(releasedStains)+' de '+count(totalStains)+' manchas liberadas'}. Sem produtividade diária de projetos. Semáforo por marcos: aguardando quantitativos e cronograma validado.</small>
+  <small>{releasedStains===null?'Manchas: aguardando cadastro':count(releasedStains)+' de '+count(totalStains)+' manchas liberadas'}. As liberações conhecidas ainda não estão classificadas por marco anual. Semáforo por marcos: aguardando enquadramento das economias e validação do cronograma, sem produtividade diária.</small>
  </div>
  </div>
  </div>
  <div className="va-plan-lower">
-      <div className="va-plan-assessment"><h3>LEITURA DO CRONOGRAMA E DO ATAQUE DAS MANCHAS</h3><p>Cobertura da carteira de projetos frente às metas anuais de execução</p><div className="va-plan-years">{[2026,2027,2028].map(year=><div key={year}><b>{year}</b><span>Meta: {count(annualGoal(year))} economias</span><small>Projetos para estas economias: aguardando vínculo das manchas</small><em className="va-traffic va-traffic-unknown"><i/>Semáforo: não avaliado</em></div>)}</div></div>
+      <div className="va-plan-assessment"><h3>LEITURA DO CRONOGRAMA E DO ATAQUE DAS MANCHAS</h3><p>Cobertura de projetos para atender a execução de cada ano</p><div className="va-plan-years">{[2026,2027,2028].map(year=><div key={year}><b>{year}</b><span>Meta: {count(annualGoal(year))} economias</span><small>Economias em projetos atribuídas ao ano: aguardando classificação</small><em className="va-traffic va-traffic-unknown"><i/>Semáforo: não avaliado</em></div>)}</div></div>
       <div className="va-plan-targets"><h3>METAS POR ANO</h3>{[2026,2027,2028].map(year=><div key={year}><span>{year}</span><b>{count(annualGoal(year))}</b></div>)}<div className="va-plan-total"><span>Total</span><b>{count(officialContractTotal)}</b></div><small>Economias · recorte oficial informado. Números zerados no cadastro serão sinalizados para correção.</small></div>
      </div>
      <p className="va-notice-small">A execução por sistema permanece pendente enquanto não houver origem segregada. A Engenharia deve liberar até maio/2027 projetos para todas as 14.421 economias contratadas. O semáforo depende do avanço comprovado dessas entregas, não apenas da quantidade de manchas.</p>
