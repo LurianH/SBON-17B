@@ -271,3 +271,5 @@
 .va-goals-rev .va-measure .va-progress{height:10px;background:#E5EDEC}
 .va-goals-rev .va-measure .va-goal-numbers{margin-top:6px;font-size:10px}
 .va-goals-rev .va-measure+.va-measure{margin-top:15px}
+
+.va-project-reference{display:flex;flex-direction:column;gap:5px;margin-bottom:9px}.va-project-reference span{font-size:10px;color:#586663}.va-project-reference b{color:#123149}.va-project-progress-reference>i{background:#A9BAB7}.va-project-progress-reference{margin:0}
