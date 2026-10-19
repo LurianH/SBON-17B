@@ -10,7 +10,7 @@ import {EngineeringManagementOverview} from '@/components/EngineeringManagementO
 
 import type {ProjectReviewRow} from '@/lib/project-review-status';
 import type {GisProjectRow} from '@/lib/gis-project-model';
-import type {ProjectManagementRow,ProjectNetworkRow} from '@/lib/engineering-unified-model';
+import type {ProjectManagementRow,ProjectNetworkRow,EngineeringExecutionRow} from '@/lib/engineering-unified-model';
 import type {LocalizedWorkRow} from '@/lib/localized-works-model';
 
 const format = (v: number | null, meters = false) => v === null ? 'Aguardando atualização' : new Intl.NumberFormat('pt-BR', {maximumFractionDigits: 3}).format(v) + (meters ? ' m' : '');
@@ -18,13 +18,14 @@ const day = (v: string) => new Intl.DateTimeFormat('pt-BR').format(new Date(v + 
 const instant = (v: string) => new Intl.DateTimeFormat('pt-BR', {dateStyle: 'short', timeStyle: 'short'}).format(new Date(v));
 const localDate = () => {const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;};
 
-export function EngineeringPanel({projects, updates, categories, role, contractId, notice, localizedWorks=[], localizedNotice='', reviewRows=[], gisProjects=[],managementRows=[],networkRows=[]}: {
+export function EngineeringPanel({projects, updates, categories, role, contractId, notice, localizedWorks=[], localizedNotice='', reviewRows=[], gisProjects=[],managementRows=[],networkRows=[],executionRows=[]}: {
   projects: Project[]; updates: Update[]; categories: Category[]; role: string | null; contractId: string | null; notice: string;
   localizedWorks?: LocalizedWorkRow[]; localizedNotice?: string;
   reviewRows?: ProjectReviewRow[];
   gisProjects?: GisProjectRow[];
   managementRows?:ProjectManagementRow[];
   networkRows?:ProjectNetworkRow[];
+  executionRows?:EngineeringExecutionRow[];
 }) {
   const [filters, setFilters] = useState<EngineeringFilters>(emptyFilters);
   const [feedback, setFeedback] = useState('');
@@ -55,7 +56,7 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
       <a href="#engenharia-municipios">Cinco municípios</a>
       <a href="#engenharia-estruturas">Reservatórios, boosters e EEEs</a>
     </nav>
-    <EngineeringProjectHub projects={visible} gis={gisProjects} reviews={reviewRows} management={managementRows} network={networkRows} canEdit={canEdit}/>
+    <EngineeringProjectHub projects={visible} gis={gisProjects} reviews={reviewRows} management={managementRows} network={networkRows} execution={executionRows} canEdit={canEdit}/>
     <div id="engenharia-estruturas" className="engineering-section-label"><h2>Obras localizadas</h2><p>Reservatórios, boosters e EEEs permanecem em cadastro de estruturas, separado dos trechos lineares.</p></div>
     <LocalizedWorksEngineering role={role} contractId={contractId} projects={projects} initialWorks={localizedWorks} notice={localizedNotice} readOnly={director}/>
     <details className="panel engineering-project-history">

@@ -20,3 +20,13 @@ export const segmentNames:Record<SegmentStatus,string>={PROJECTED:'Projetado',AP
 export const validMaterials=['PEAD','PVC','PRFV','FERRO FUNDIDO','AÇO','CONCRETO','OUTRO'] as const;
 export const fmt=(x:number)=>new Intl.NumberFormat('pt-BR',{maximumFractionDigits:3}).format(x);
 export const formatKm=(m:number)=>fmt(m/1000)+' km';
+
+export type EngineeringExecutionRow={
+  engineering_project_id:string;
+  reference_date:string;
+  material:string;
+  diameter_label:string;
+  period_length_m:number|string;
+  cumulative_length_m:number|string;
+  executed_economies:number;
+};

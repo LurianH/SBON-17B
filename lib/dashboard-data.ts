@@ -1,4 +1,4 @@
-import {calculateAnnualEconomiesProjection,calculateAnnualTargetDeviation,calculateDashboardStatus,calculateDeviationOrigin,calculateMonthlyBillingYTD,calculateProjectionBaseAverage} from './calculations';
+import {calculateAnnualEconomiesProjection,calculateAnnualTargetDeviation,calculateDashboardStatus,calculateDeviationOrigin,calculateMonthlyBillingYTD,calculateObservedWeeklyEconomiesRate} from './calculations';
 import {loadDashboardEngineering, type EngineeringBreakdown, type EngineeringReleaseSummary} from './dashboard-engineering';
 import {createClient} from './supabase/client';
 import {isSupabaseConfigured} from './supabase/config';
@@ -26,8 +26,13 @@ export async function loadDashboardData():Promise<DashboardData>{
   ?await db.from('annual_target_details').select('municipality,segment_type,cut_name,target_economies').eq('annual_target_id',targetRow.id)
   :{data:null};
  const targetBreakdown=detailRows?.length?summarizeAnnualTarget(detailRows as AnnualTargetDetail[]):null;
- const rows=weekly??[],latest=rows.at(-1),target=targetBreakdown?.total??targetRow?.target_economies??null,firstMonth=rows[0]?.reference_date.slice(0,7),baseRows=firstMonth?rows.filter(r=>r.reference_date.startsWith(firstMonth)):[];
- const avgExecuted=calculateProjectionBaseAverage(baseRows.map(r=>r.economies_executed)),date=latest?new Date(latest.reference_date+'T12:00:00'):new Date(),quarterIncrement=avgExecuted===null?null:avgExecuted*4.345*3;
+ const rows=(weekly??[]).filter(r=>r.reference_date.startsWith(String(year)+'-'));
+ const latest=rows.at(-1),target=targetBreakdown?.total??targetRow?.target_economies??null;
+ // O período de referência pode variar; normalizar pela quantidade de dias
+ // em vez de presumir deltas semanais e exigir variação positiva de economias.
+ const weeklyRate=calculateObservedWeeklyEconomiesRate(rows);
+ const date=latest?new Date(latest.reference_date+'T12:00:00'):new Date();
+ const quarterIncrement=weeklyRate===null?null:weeklyRate*4.345*3;
  const projection=latest&&quarterIncrement!==null?calculateAnnualEconomiesProjection(latest.economies_executed,quarterIncrement,remainingMonths(date)):null;
  // The execution input is consolidated economies, so a missing target segment
  // cannot be isolated into a trustworthy segment-specific deviation.
