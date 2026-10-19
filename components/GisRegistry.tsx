@@ -11,7 +11,7 @@ export type GisSystemRow={
  id:string;gis_code:string;municipality:string;classification:'BOTH'|'SEWER';
  settlement_type:string|null;neighborhood:string|null;source_sheet:string;
  economies_ica:number|null;economies_ice:number|null;economies_iec:number|null;
- cancelled:boolean;engineering_project_id:string|null;linked_project_name:string|null;
+ cancelled:boolean;estimated_households:number|null;engineering_project_id:string|null;linked_project_name:string|null;
  segment_type:Segment;effective_status:Status;
 };
 type Log={id:string;old_status:Status|null;new_status:Status;changed_at:string};
@@ -91,10 +91,10 @@ export function GisRegistry({rows,role}:{rows:GisSystemRow[];role:string}) {
    <article><span>Códigos GIS distintos</span><strong>{number(byId.length)}</strong><small>74 da aba principal + 10 novos</small></article>
    <article><span>Manchas de Água</span><strong>{number(water.length)}</strong><small>{water.filter(r=>r.cancelled).length} canceladas</small></article>
    <article><span>Manchas de Esgoto</span><strong>{number(sewer.length)}</strong><small>{sewer.filter(r=>r.cancelled).length} canceladas</small></article>
-   <article><span>Manchas novas</span><strong>{number(byId.filter(r=>r.source_sheet==='Planilha2').length)}</strong><small>Economias não informadas na planilha</small></article>
+   <article><span>Manchas novas</span><strong>{number(byId.filter(r=>r.source_sheet==='Planilha2').length)}</strong><small>466 domicílios convertidos em estimativas</small></article>
   </section>
   <section className="panel gis-economies">
-   <h2>Economias da base GIS</h2>
+   <h2>Economias da base GIS</h2><p className="gis-context">As 10 novas manchas têm estimativas de 1 economia de Água e 1 de Esgoto por domicílio informado. Esses valores não representam aprovação técnica nem alteram metas anuais.</p>
    <div className="gis-economy-grid">
     <div><span>Economias de Água · escopo vigente</span><strong>{number(economySum('economies_ica',false))}</strong><small>{missing('economies_ica')} manchas de Água sem quantidade informada · total parcial</small></div>
     <div><span>Economias de Esgoto · escopo vigente</span><strong>{number(economySum('economies_ice',false))}</strong><small>{missing('economies_ice')} manchas de Esgoto sem quantidade informada · total parcial</small></div>
@@ -118,7 +118,7 @@ export function GisRegistry({rows,role}:{rows:GisSystemRow[];role:string}) {
    <p className="gis-count">{filtered.length} manchas exibidas de {current.length} do sistema selecionado</p>
    <div className="gis-scroll"><table><thead><tr><th>GIS / Bairro</th><th>Município</th><th>Recorte</th><th>Economias de Água</th><th>Economias de Esgoto</th><th>Status da aprovação</th></tr></thead><tbody>
     {filtered.map(row=><tr key={row.id+row.segment_type}>
-     <td><strong>{row.gis_code}</strong><small>{row.neighborhood||'Bairro não informado'}</small>{row.linked_project_name&&<small>Projeto vinculado: {row.linked_project_name}</small>}{row.source_sheet==='Planilha2'&&<small className="gis-tag">Nova</small>}</td>
+     <td><strong>{row.gis_code}</strong><small>{row.neighborhood||'Bairro não informado'}</small>{row.linked_project_name&&<small>Projeto vinculado: {row.linked_project_name}</small>}{row.source_sheet==='Planilha2'&&<small className="gis-tag">Nova · {row.estimated_households??'—'} domicílios estimados</small>}</td>
      <td>{row.municipality}</td><td>{row.settlement_type??'—'}</td><td>{amount(row.economies_ica)}</td><td>{amount(row.economies_ice)}</td>
      <td className="gis-status-cell">{row.cancelled?<strong className="gis-cancelled">Cancelado</strong>
       :row.segment_type==='WATER'&&row.engineering_project_id?<div><strong>{labels[row.effective_status]}</strong><Link href="/engenharia#engenharia-classificacao">Editar na Engenharia →</Link></div>

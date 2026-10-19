@@ -39,8 +39,8 @@ function SegmentAmounts({projects,title,gis}:{projects:CurrentProject[];title:st
     {number.missing>0&&<small>{number.missing} manchas sem quantidade informada · parcial</small>}
   </>;
   return <div className="engineering-segment"><h3>{title}</h3>
-    {(title==='Água'||title==='Total')&&show('Economias de Água · GIS',water)}
-    {(title==='Esgoto'||title==='Total')&&show('Economias de Esgoto · GIS',sewer)}
+    {(title==='Água'||title==='Total')&&show('Economias de Água · estimativa GIS',water)}
+    {(title==='Esgoto'||title==='Total')&&show('Economias de Esgoto · estimativa GIS',sewer)}
     <span>Metragem aprovada · dados técnicos da Engenharia</span><Amount metric={summary.length} meters/>
   </div>;
 }
