@@ -20,6 +20,9 @@ const knownReleased=(water:number|null,sewer:number|null)=>
  water===null&&sewer===null?null:(water??0)+(sewer??0);
 const date=(v:string|null)=>v?new Intl.DateTimeFormat('pt-BR').format(new Date(v+'T12:00:00')):'Aguardando atualização';
 const absence='Ainda não informado';
+// Recorte contratual confirmado pela fiscalização; não representa execução realizada.
+const officialAnnualTargets:Record<number,number>={2026:1709,2027:8124,2028:4588};
+const officialContractTotal=14421;
 
 function PanelTitle({icon:Icon,title,action}:{icon:typeof Target,title:string,action?:React.ReactNode}){
  return <div className="va-panel-title"><div><Icon size={22} strokeWidth={2.2}/><h2>{title}</h2></div>{action}</div>;
@@ -107,6 +110,7 @@ export default function Dashboard(){
  const partialRelease=withoutEconomies>0||withoutNetwork>0;
  const releasedStains=stainState?(['WATER','SEWER'] as const).reduce((sum,system)=>sum+(stainState.counts[system].NO_OBJECTION??0)+(stainState.counts[system].NO_OBJECTION_RESERVATIONS??0),0):null;
  const totalStains=stainState?stainState.totals.WATER+stainState.totals.SEWER:null;
+ const annualGoal=(year:number)=>{const dbTotal=annualTargets.find(row=>row.year===year)?.total;return dbTotal&&dbTotal>0?dbTotal:officialAnnualTargets[year]??null};
  const projected=ratio(data.annualProjection,data.target);
  const projectedWidth=projected===null?0:Math.max(0,Math.min(100,projected));
  return <VitaluxChrome lastUpdated={data.latestDate} year={data.targetYear}>
@@ -124,15 +128,15 @@ export default function Dashboard(){
       <div className="va-goal-systems"><GoalRow system="Água" goal={targetWater} approved={engWater} icon={Droplets}/><GoalRow system="Esgoto" goal={targetSewer} approved={engSewer} icon={Waves}/></div>
       <div className="va-plan-timelines">
        <h3>CRONOGRAMA DO CONTRATO</h3>
-       <div className="va-plan-timeline"><div><b>Execução contratual</b><small>Metas anuais de economias · até 2028</small></div><div className="va-time-track"><span>2026</span><span>2027</span><span>2028</span></div></div>
+       <div className="va-plan-timeline"><div><b>Execução contratual</b><small>Meta do contrato: {count(officialContractTotal)} economias · até 2028</small></div><div className="va-time-track"><span>2026 · {count(annualGoal(2026))}</span><span>2027 · {count(annualGoal(2027))}</span><span>2028 · {count(annualGoal(2028))}</span></div></div>
        <div className="va-plan-timeline"><div><b>Projetos / manchas</b><small>Conclusão até 31/05/2027 · {releasedStains===null?'aguardando situação':count(releasedStains)+' de '+count(totalStains)+' manchas liberadas (total cadastrado)'}</small></div><div className="va-time-track va-time-project"><span>2026</span><span>2027</span><span>31/05/2027</span></div></div>
       </div>
      </div>
      <div className="va-plan-lower">
-      <div className="va-plan-assessment"><h3>LEITURA DO CRONOGRAMA E DO ATAQUE DAS MANCHAS</h3><p>Aderência das frentes à meta anual</p><div className="va-plan-years">{[2026,2027,2028].map(year=><div key={year}><b>{year}</b><span>Meta: {count(annualTargets.find(row=>row.year===year)?.total??null)} economias</span><small>Manchas em ataque: aguardando enquadramento por ano</small><em>Aderência em apuração</em></div>)}</div></div>
-      <div className="va-plan-targets"><h3>METAS POR ANO</h3>{[2026,2027,2028].map(year=><div key={year}><span>{year}</span><b>{count(annualTargets.find(row=>row.year===year)?.total??null)}</b></div>)}<div className="va-plan-total"><span>Total</span><b>{annualTargets.length===3?count(annualTargets.reduce((sum,row)=>sum+row.total,0)): '—'}</b></div><small>Economias · execução contratual</small></div>
+      <div className="va-plan-assessment"><h3>LEITURA DO CRONOGRAMA E DO ATAQUE DAS MANCHAS</h3><p>Aderência das frentes à meta anual</p><div className="va-plan-years">{[2026,2027,2028].map(year=><div key={year}><b>{year}</b><span>Meta: {count(annualGoal(year))} economias</span><small>Manchas em ataque: aguardando enquadramento por ano</small><em className="va-traffic va-traffic-unknown"><i/>Semáforo: não avaliado</em></div>)}</div></div>
+      <div className="va-plan-targets"><h3>METAS POR ANO</h3>{[2026,2027,2028].map(year=><div key={year}><span>{year}</span><b>{count(annualGoal(year))}</b></div>)}<div className="va-plan-total"><span>Total</span><b>{count(officialContractTotal)}</b></div><small>Economias · recorte oficial informado. Números zerados no cadastro serão sinalizados para correção.</small></div>
      </div>
-     <p className="va-notice-small">A execução por sistema permanece pendente enquanto não houver origem segregada. Aderência depende das economias das manchas vinculadas ao respectivo ano, sem estimar percentuais.</p>
+     <p className="va-notice-small">A execução por sistema permanece pendente enquanto não houver origem segregada. Semáforos verde, amarelo ou vermelho serão ativados apenas com cronograma-base e economias vinculadas ao ano; até lá, aparecem como não avaliados.</p>
     </article>
     <article className="va-card va-status"><PanelTitle icon={CheckCircle2} title="STATUS DAS MANCHAS POR SISTEMA" action={<Link className="va-inline-link" href="/engenharia#engenharia-classificacao">Atualizar status ↗</Link>}/><div className="va-status-grid"><StatusSystem system="Água" total={stainState?.totals.WATER??38} counts={stainState?.counts.WATER??null}/><StatusSystem system="Esgoto" total={stainState?.totals.SEWER??84} counts={stainState?.counts.SEWER??null}/></div><p className="va-notice-small">Uma mancha corresponde a um projeto por sistema: a classificação da Engenharia é refletida aqui. Projetos sem avaliação permanecem como não classificados.</p></article>
    </section>
