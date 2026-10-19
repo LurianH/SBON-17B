@@ -10,6 +10,29 @@ export function calculateProjectionBaseAverage(values:number[],minimumDeltas=2):
   const deltas=values.slice(1).map((v,i)=>v-values[i]).filter(v=>v>=0);
   return deltas.length>=minimumDeltas?deltas.reduce((a,b)=>a+b,0)/deltas.length:null;
 }
+/**
+ * Ritmo semanal observado em economias ACUMULADAS, ponderado pelo número real
+ * de dias entre registros (que podem ser diários ou semanais).
+ * Não projeta antes de existir produção positiva observada.
+ */
+export function calculateObservedWeeklyEconomiesRate(
+  rows:{reference_date:string;economies_executed:number}[],
+  minimumObservations=3,minimumSpanDays=14
+):number|null {
+  const sorted=[...rows].sort((a,b)=>a.reference_date.localeCompare(b.reference_date));
+  if(sorted.length<minimumObservations)return null;
+  if(new Set(sorted.map(r=>r.reference_date)).size!==sorted.length)return null;
+  for(let i=0;i<sorted.length;i++){
+    if(!Number.isFinite(sorted[i].economies_executed)||sorted[i].economies_executed<0)return null;
+    if(i>0&&sorted[i].economies_executed<sorted[i-1].economies_executed)return null;
+  }
+  const last=sorted[sorted.length-1];
+  const first=sorted[0];
+  const periodDays=(Date.parse(last.reference_date+'T12:00:00Z')-Date.parse(first.reference_date+'T12:00:00Z'))/86400000;
+  if(!Number.isFinite(periodDays)||periodDays<minimumSpanDays)return null;
+  const executed=last.economies_executed-first.economies_executed;
+  return executed>0?executed*7/periodDays:null;
+}
 export function calculateQuarterProjection(current:number,weeklyAverage:number,weeksByMonth:number[]=[4.345,4.345,4.345]){
   let accumulated=current; return weeksByMonth.map(weeks=>{const increment=weeklyAverage*weeks;accumulated+=increment;return {increment:Math.round(increment),accumulated:Math.round(accumulated)}})
 }
