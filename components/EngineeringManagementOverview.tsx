@@ -34,7 +34,7 @@ export function EngineeringManagementOverview({projects,localizedWorks,stains,re
  const sewerKm=metricSum(sewer,'approved_length_m');
  const works=(kind:'RESERVOIR'|'BOOSTER'|'EEE')=>localizedWorks.filter(w=>w.active&&w.kind===kind).reduce((sum,w)=>sum+w.quantity,0);
  return <section className="em-overview" aria-label="Visão gerencial de Engenharia">
-  <div className="em-overview-header"><div><span>PAINEL DE CONTROLE · ENGENHARIA</span><h2>Projetos, aprovação e entregas</h2><p>Resumo baseado exclusivamente nos cadastros atuais do SBON 17B. Os quantitativos detalhados permanecem nas seções abaixo.</p></div><div className="em-overview-actions"><a href="#engenharia-classificacao">Classificar projetos →</a><Link href="/manchas">Atualizar manchas →</Link></div></div>
+  <div className="em-overview-header"><div><span>PAINEL DE CONTROLE · ENGENHARIA</span><h2>Projetos, aprovação e entregas</h2><p>Resumo baseado exclusivamente nos cadastros atuais do SBON 17B. Os quantitativos detalhados permanecem nas seções abaixo.</p></div><div className="em-overview-actions"><a href="#engenharia-classificacao">Classificar projetos →</a><Link href="/manchas">Consultar manchas GIS →</Link></div></div>
   <div className="em-scorecards">
    <Kpi icon={Layers3} label="Projetos cadastrados" value={number(total.count)} sub={number(classified)+' classificados · '+number(total.count-classified)+' pendentes'}/>
    <Kpi icon={CheckCheck} label="Concepções aprovadas" value={number(total.approved)} sub={total.count?number(total.conceptPercent??0)+'% dos projetos ativos':'Sem base de projetos'}/>
@@ -50,7 +50,7 @@ export function EngineeringManagementOverview({projects,localizedWorks,stains,re
    <article className="em-block">
     <div className="em-block-title"><MapPinned size={20}/><h3>Manchas contratuais · por sistema</h3></div>
     <div className="em-stain-grid"><div><span>Água</span><strong>{number(stains.waterTotal)}</strong><small>{stains.waterClassified} classificadas</small></div><div><span>Esgoto</span><strong>{number(stains.sewerTotal)}</strong><small>{stains.sewerClassified} classificadas</small></div></div>
-    <p className="em-note">Manchas são unidades contratuais diferentes de projetos. A classificação é atualizada pela aba Manchas.</p>
+    <p className="em-note">Cada mancha GIS corresponde a um projeto por sistema: 38 projetos de Água e 84 de Esgoto. Classifique pela Engenharia; Manchas e Dashboard mostram os mesmos status.</p>
    </article>
   </div>
   <div className="em-highlight-row">
