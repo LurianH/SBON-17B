@@ -137,14 +137,14 @@ export default function Dashboard(){
  <h3>CRONOGRAMA · METAS DISTINTAS</h3>
  <div className="va-separated-goal">
   <b>1 · Execução física contratual</b>
-  <small>Meta de 14.421 economias concluídas, conforme os recortes de execução.</small>
-  <div className="va-time-track"><span>2026 · 1.709</span><span>2027 · 8.124</span><span>2028 · 4.588</span></div>
+  <small>Meta física contratual: {count(officialContractTotal)} economias até 2028, distribuídas por ano.</small>
+  <div className="va-time-track"><span>2026 · {count(annualGoal(2026))}</span><span>2027 · {count(annualGoal(2027))}</span><span>2028 · {count(annualGoal(2028))}</span></div>
   <div className="va-separate-summary"><span>Executadas em {data.targetYear}: <b>{count(data.executed)}</b></span><span>Saldo da meta anual: <b>{data.executed===null||data.target===null?'—':count(Math.max(0,data.target-data.executed))}</b></span></div>
   <small>Ritmo físico: {data.annualProjection===null?'aguardando série suficiente de economias executadas':count(data.annualProjection)+' economias projetadas para '+data.targetYear}. Os registros são do ano corrente; não representam automaticamente o acumulado dos três anos.</small>
  </div>
  <div className="va-separated-goal">
   <b>2 · Engenharia — projetos liberados</b>
-  <small>Meta de projetos: 1.709 economias até 31/12/2026; as 12.712 restantes até 31/05/2027.</small>
+  <small>Meta de liberação de projetos: 1.709 economias até 31/12/2026; 12.712 adicionais até 31/05/2027.</small>
   <div className="va-time-track va-time-project"><span>20/07/2026</span><span>31/12/2026 · 1.709</span><span>31/05/2027 · 14.421</span></div>
   <div className="va-project-progress" role="progressbar" aria-label="Economias liberadas pela Engenharia" aria-valuemin={0} aria-valuemax={officialContractTotal} aria-valuenow={releasedEconomies??0}><i style={{width:releasedEconomies===null?'0%':Math.min(100,releasedEconomies/officialContractTotal*100)+'%'}}/></div>
   <div className="va-separate-summary"><span>Liberadas conhecidas: <b>{count(releasedEconomies)}</b>{withoutEconomies>0?' · parcial':''}</span><span>Saldo não comprovado: <b>{releasedEconomies===null?'—':count(Math.max(0,officialContractTotal-releasedEconomies))}</b></span></div>
