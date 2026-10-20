@@ -303,3 +303,11 @@
 .va-plan-lower-executive .va-plan-assessment h3{margin-bottom:10px}
 .va-plan-lower-executive .va-plan-years>div{gap:7px}
 @media(max-width:900px){.va-exec-kpis{grid-template-columns:1fr}.va-exec-kpis>div{flex-direction:row;justify-content:space-between}.va-exec-milestones strong{font-size:11px}.va-exec-milestones small{font-size:9px}}
+
+.va-traffic-warning{background:#fff0df;color:#9a520d}.va-traffic-warning i{background:#f39b25}
+.va-traffic-critical{background:#ffe9e7;color:#af302d}.va-traffic-critical i{background:#d63933}
+.va-static-chart{margin-top:14px;border-top:1px solid #e0eae8;padding-top:14px;display:flex;flex-direction:column;gap:5px}
+.va-static-chart h3{font-size:12px;color:#075d59;margin:0}.va-static-legend{font-size:10px;color:#617572}
+.va-static-chart svg{display:block;width:100%;max-width:440px;margin:0 auto;height:auto}.va-static-chart text{fill:#476360}
+.va-static-foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;font-size:11px;color:#536b68}.va-static-foot b{color:#123149}
+.va-static-chart>small{font-size:9px;line-height:1.45;color:#657572}.va-plan-years .va-traffic{margin-top:3px}
