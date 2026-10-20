@@ -20,6 +20,9 @@ const knownReleased=(water:number|null,sewer:number|null)=>
  water===null&&sewer===null?null:(water??0)+(sewer??0);
 const date=(v:string|null)=>v?new Intl.DateTimeFormat('pt-BR').format(new Date(v+'T12:00:00')):'Aguardando atualização';
 const absence='Ainda não informado';
+// Recorte contratual confirmado pela fiscalização; não representa execução realizada.
+const officialAnnualTargets:Record<number,number>={2026:1709,2027:8124,2028:4588};
+const officialContractTotal=14421;
 
 function PanelTitle({icon:Icon,title,action}:{icon:typeof Target,title:string,action?:React.ReactNode}){
  return <div className="va-panel-title"><div><Icon size={22} strokeWidth={2.2}/><h2>{title}</h2></div>{action}</div>;
@@ -27,12 +30,14 @@ function PanelTitle({icon:Icon,title,action}:{icon:typeof Target,title:string,ac
 function Kpi({icon:Icon,title,value,note}:{icon:typeof Target,title:string,value:string,note:string}){
  return <article className="va-card va-kpi"><div className="va-kpi-title"><Icon size={20}/><h2>{title}</h2></div><strong>{value}</strong><small>{note}</small></article>;
 }
-function GoalRow({system,goal,approved,icon:Icon}:{system:'Água'|'Esgoto';goal:number|null;approved:number|null;icon:typeof Droplets}){
- const engineeringRatio=ratio(approved,goal);
+function GoalRow({system,goal,approved,missingQuantities=0,executedTotal,icon:Icon}:{system:'Água'|'Esgoto';goal:number|null;approved:number|null;missingQuantities?:number;executedTotal:number|null;icon:typeof Droplets}){
+ const executionKnown=executedTotal===0;
  return <div className="va-goal-row">
-  <div className="va-goal-system"><Icon size={30} className={system==='Água'?'va-water':'va-sewer'}/><div><b>{system}</b><small>Meta: {goal===null?absence:count(goal)+' economias'}</small></div></div>
-  <div className="va-goal-graphic"><div className="va-progress va-progress-empty" aria-label={'Execução de '+system+' ainda não segregada por sistema'}><span/></div><div className="va-goal-numbers"><span>Executadas: <b>—</b></span><span>A executar: <b>—</b></span></div><small className="va-goal-context">Aprovadas na Engenharia: {count(approved)}{engineeringRatio===null?'':' ('+percentage(engineeringRatio)+' da meta)'}</small></div>
-  <div className="va-goal-percent"><strong>—</strong><small>execução por sistema pendente</small></div>
+  <div className="va-goal-system"><Icon size={30} className={system==='Água'?'va-water':'va-sewer'}/><div><b>{system}</b><small>Meta de execução do ano: {goal===null?absence:count(goal)+' economias'}</small></div></div>
+  <div className="va-goal-graphic va-double-progress">
+   <div className="va-measure"><div className="va-measure-heading"><b>Execução</b><small>{executionKnown?'0%':'Sem segregação por sistema'}</small></div>{executionKnown?<div className="va-progress" role="progressbar" aria-label={'Execução de '+system} aria-valuemin={0} aria-valuemax={100} aria-valuenow={0}><span style={{width:'0%',background:'#1879C4'}}/></div>:<div className="va-progress va-progress-unclassified" role="status"><span>Execução por sistema em apuração</span></div>}<div className="va-goal-numbers"><span>Executadas: <b>{executionKnown?'0':'—'}</b></span><span>A executar: <b>{executionKnown?count(goal):'—'}</b></span></div></div>
+   <div className="va-measure"><div className="va-measure-heading"><b>Projetos / Engenharia</b><small>Meta por sistema e ano ainda não vinculada</small></div><div className="va-progress va-progress-unclassified" role="note" aria-label={"Projetos de "+system+": percentual ainda não classificável"}><span>Percentual em apuração</span></div><div className="va-goal-numbers"><span>Liberadas conhecidas: <b>{count(approved)}</b>{missingQuantities>0?' (parcial)':''}</span><span>Saldo do marco: <b>—</b></span></div></div>
+  </div>
  </div>;
 }
 type StainState={totals:Record<'WATER'|'SEWER',number>;counts:Record<'WATER'|'SEWER',Record<string,number>>};
@@ -63,6 +68,8 @@ export default function Dashboard(){
  const [data,setData]=useState<DashboardData|null>(null);
  const [structures,setStructures]=useState<Structures|null>(null);
  const [stainState,setStainState]=useState<StainState|null>(null);
+ const [annualTargets,setAnnualTargets]=useState<{year:number;total:number}[]>([]);
+ const [attack2026,setAttack2026]=useState<{economies:number;stains:number}|null>(null);
  useEffect(()=>{
   let active=true;
   void (async()=>{
@@ -71,12 +78,16 @@ export default function Dashboard(){
    setData(result);
    if(!result.contractId||result.source!=='supabase')return;
    const db=createClient();if(!db)return;
-   const [works,targets,stains]=await Promise.all([
+   const [works,targets,stains,annual,attack]=await Promise.all([
     db.from('engineering_localized_works').select('kind,quantity').eq('contract_id',result.contractId).eq('active',true),
     db.from('contract_stain_targets').select('segment_type,total_count').eq('contract_id',result.contractId),
-    db.from('gis_stain_system_effective').select('segment_type,effective_status').eq('contract_id',result.contractId)
+    db.from('gis_stain_system_effective').select('segment_type,effective_status').eq('contract_id',result.contractId),
+    db.from('annual_targets').select('year,target_economies').eq('contract_id',result.contractId).gte('year',2026).lte('year',2028).order('year'),
+    db.from('engineering_attack_plan_2026').select('stain_id,planned_economies')
    ]);
    if(!active)return;
+   if(!attack.error&&attack.data){const unique=new Set(attack.data.map(row=>String(row.stain_id)).filter(Boolean));setAttack2026({economies:attack.data.reduce((n,row)=>n+(Number.isFinite(Number(row.planned_economies))?Math.max(0,Number(row.planned_economies)):0),0),stains:unique.size});}
+   if(!annual.error&&annual.data)setAnnualTargets(annual.data.map(row=>({year:Number(row.year),total:Number(row.target_economies)})));
    if(!works.error&&works.data){
     const next={reservoirs:0,boosters:0,eees:0};
     for(const row of works.data){const q=Number(row.quantity)||0;if(row.kind==='RESERVOIR')next.reservoirs+=q;if(row.kind==='BOOSTER')next.boosters+=q;if(row.kind==='EEE')next.eees+=q;}
@@ -93,28 +104,66 @@ export default function Dashboard(){
   return()=>{active=false};
  },[]);
  if(!data)return <div className="va-loading">Carregando painel gerencial Vitalux…</div>;
- const targetWater=data.targetBreakdown?.water??null,targetSewer=data.targetBreakdown?.sewer??null;
- const engWater=data.engineeringBreakdown?.waterEconomies??null,engSewer=data.engineeringBreakdown?.sewerEconomies??null;
- const netWater=data.engineeringBreakdown?.waterNetwork??null,netSewer=data.engineeringBreakdown?.sewerNetwork??null;
+ // Desagregação contratual confirmada apenas para 2026; não inferir sistemas de outros anos.
+ const targetWater=data.targetBreakdown?.water??(data.targetYear===2026?352:null),targetSewer=data.targetBreakdown?.sewer??(data.targetYear===2026?1357:null);
  const release=data.releaseSummary;
  const releasedEconomies=release?knownReleased(release.water.economies.value,release.sewer.economies.value):null;
  const releasedNetwork=release?knownReleased(release.water.network.value,release.sewer.network.value):null;
  const withoutEconomies=release?release.water.economies.missing+release.sewer.economies.missing:0;
  const withoutNetwork=release?release.water.network.missing+release.sewer.network.missing:0;
  const partialRelease=withoutEconomies>0||withoutNetwork>0;
- const projected=ratio(data.annualProjection,data.target);
+ const releasedStains=stainState?(['WATER','SEWER'] as const).reduce((sum,system)=>sum+(stainState.counts[system].NO_OBJECTION??0)+(stainState.counts[system].NO_OBJECTION_RESERVATIONS??0),0):null;
+ const totalStains=stainState?stainState.totals.WATER+stainState.totals.SEWER:null;
+ const annualGoal=(year:number)=>{const dbTotal=annualTargets.find(row=>row.year===year)?.total;return dbTotal&&dbTotal>0?dbTotal:officialAnnualTargets[year]??null};
+ const annualTargetsSum=[2026,2027,2028].reduce((sum,year)=>sum+(annualGoal(year)??0),0);
+ const annualTargetsMismatch=annualTargetsSum!==officialContractTotal;
+ const currentYearGoal=annualGoal(data.targetYear);
+ const systemTotalsMismatch=currentYearGoal!==null&&targetWater!==null&&targetSewer!==null&&targetWater+targetSewer!==currentYearGoal;
+ const projected=ratio(data.annualProjection,currentYearGoal);
  const projectedWidth=projected===null?0:Math.max(0,Math.min(100,projected));
- return <VitaluxChrome lastUpdated={data.latestDate} year={data.targetYear}>\n  <main className="va-main">
+ return <VitaluxChrome lastUpdated={data.latestDate} year={data.targetYear}>
+  <main className="va-main">
    <section className="va-top-grid">
     <Kpi icon={FileText} title="VALOR DO CONTRATO" value={currency(data.contractValue)} note="Contrato consolidado"/>
     <Kpi icon={BarChart3} title="FATURADO NO ANO" value={currency(data.billingYtd)} note="Acumulado do exercício"/>
-    <Kpi icon={Target} title={'META '+data.targetYear} value={data.target===null?'Em apuração':count(data.target)+' economias'} note={'Água '+count(targetWater)+' · Esgoto '+count(targetSewer)}/>
+    <Kpi icon={Target} title={'META '+data.targetYear} value={currentYearGoal===null?'Em apuração':count(currentYearGoal)+' economias'} note={systemTotalsMismatch?'Divergência no cadastro por sistema: Água '+count(targetWater)+' + Esgoto '+count(targetSewer):'Água '+count(targetWater)+' · Esgoto '+count(targetSewer)}/>
     <article className="va-card va-projection"><PanelTitle icon={TrendingUp} title="PROJEÇÃO ANUAL"/><div className="va-projection-inner"><div className="va-half-gauge" style={{'--gauge':projectedWidth/2+'%'} as React.CSSProperties}><div><b>{percentage(projected)}</b><small>{projected===null?'Em apuração':'da meta anual'}</small></div></div><p>{projected!==null?'Projeção calculada pela produtividade observada, normalizada por dias de acompanhamento.':data.executed===0&&data.networkExecuted!==null&&data.networkExecuted>0?'Rede executada: '+count(data.networkExecuted,3)+' m. Ainda são 0 economias executadas; não há produtividade de economias para extrapolar a meta anual.':'Projeção aguardando pelo menos três registros ao longo de 14 dias, com avanço positivo e consistente de economias executadas.'}</p></div></article>
    </section>
    <section className="va-center-grid">
-    <article className="va-card va-goals"><PanelTitle icon={Target} title="METAS DO CONTRATO" action={<span className="va-caption-legend">Execução segregada por sistema: pendente</span>}/><GoalRow system="Água" goal={targetWater} approved={engWater} icon={Droplets}/><GoalRow system="Esgoto" goal={targetSewer} approved={engSewer} icon={Waves}/><p className="va-notice-small">A execução cadastrada hoje é consolidada. Não distribuímos as economias executadas entre Água e Esgoto sem o registro de origem.</p></article>
-    <article className="va-card va-status"><PanelTitle icon={CheckCircle2} title="STATUS PROJETOS POR SISTEMA" action={<Link className="va-inline-link" href="/engenharia#engenharia-classificacao">Atualizar status ↗</Link>}/><div className="va-status-grid"><StatusSystem system="Água" total={stainState?.totals.WATER??38} counts={stainState?.counts.WATER??null}/><StatusSystem system="Esgoto" total={stainState?.totals.SEWER??84} counts={stainState?.counts.SEWER??null}/></div><p className="va-notice-small">Uma mancha corresponde a um projeto por sistema: a classificação da Engenharia é refletida aqui. Projetos sem avaliação permanecem como não classificados.</p></article>
-    <Deviation data={data}/>
+    <article className="va-card va-goals va-goals-rev">
+     <PanelTitle icon={Target} title="METAS DO CONTRATO"/>
+     <div className="va-goal-upper">
+      <div className="va-goal-systems"><GoalRow system="Água" goal={targetWater} approved={release?.water.economies.value??null} missingQuantities={release?.water.economies.missing??0} executedTotal={data.executed} icon={Droplets}/><GoalRow system="Esgoto" goal={targetSewer} approved={release?.sewer.economies.value??null} missingQuantities={release?.sewer.economies.missing??0} executedTotal={data.executed} icon={Waves}/></div>
+      <div className="va-plan-timelines va-timeline-executive">
+ <h3>CRONOGRAMA · METAS DISTINTAS</h3>
+ <div className="va-exec-lane">
+  <b>Execução física <small>· meta anual de economias</small></b>
+  <div className="va-exec-milestones">
+  {[2026,2027,2028].map((year)=><div key={year}><strong>{count(annualGoal(year))}</strong><span className="va-lane-point"/><small>{year}</small></div>)}
+  </div>
+ </div>
+ <div className="va-exec-lane">
+  <b>Engenharia <small>· projetos liberados</small></b>
+  <div className="va-exec-milestones va-engineering-milestones">
+   <div><strong>Início</strong><span className="va-lane-point"/><small>20/07/2026</small></div>
+   <div><strong>{count(releasedEconomies)}</strong><span className="va-lane-point va-point-current"/><small>Liberadas · parcial</small></div>
+   <div><strong>1.709</strong><span className="va-lane-point"/><small>Dez/2026</small></div>
+   <div><strong>14.421</strong><span className="va-lane-point"/><small>Mai/2027</small></div>
+  </div>
+ </div>
+ <div className="va-exec-kpis">
+  <div><small>EXECUÇÃO {data.targetYear}</small><b>{count(data.executed)} / {count(currentYearGoal)}</b><span>Avanço físico</span></div>
+  <div><small>PROJETOS DEZ/2026</small><b>{count(releasedEconomies)} / 1.709</b><span>Liberações parciais</span></div>
+  <div><small>PROJETOS MAI/2027</small><b>{count(releasedEconomies)} / 14.421</b><span>Prazo final</span></div>
+ </div>
+</div>
+</div>
+<div className="va-plan-lower va-plan-lower-executive">
+ <div className="va-plan-assessment"><h3>COBERTURA DOS PROJETOS POR ANO</h3><div className="va-plan-years">{[2026,2027,2028].map(year=><div key={year}><b>{year}</b><strong>{count(annualGoal(year))} <small>economias</small></strong><div className="va-mini-track"><i/></div><small>{year===2026&&attack2026?'Carteira preliminar: '+count(attack2026.economies)+' economias':'Vínculo de projetos em apuração'}</small><em className="va-traffic va-traffic-unknown"><i/>Não avaliado</em></div>)}</div></div>
+ <div className="va-plan-targets"><h3>METAS POR ANO</h3>{[2026,2027,2028].map(year=><div key={year}><span>{year}</span><b>{count(annualGoal(year))}</b></div>)}<div className="va-plan-total"><span>Total</span><b>{count(officialContractTotal)}</b></div>{annualTargetsMismatch&&<small>Revisar metas anuais cadastradas.</small>}</div>
+</div>
+    </article>
+    <article className="va-card va-status"><PanelTitle icon={CheckCircle2} title="STATUS DAS MANCHAS POR SISTEMA" action={<Link className="va-inline-link" href="/engenharia#engenharia-classificacao">Atualizar status ↗</Link>}/><div className="va-status-grid"><StatusSystem system="Água" total={stainState?.totals.WATER??38} counts={stainState?.counts.WATER??null}/><StatusSystem system="Esgoto" total={stainState?.totals.SEWER??84} counts={stainState?.counts.SEWER??null}/></div><p className="va-notice-small">Uma mancha corresponde a um projeto por sistema: a classificação da Engenharia é refletida aqui. Projetos sem avaliação permanecem como não classificados.</p></article>
    </section>
    <section className="va-bottom-grid">
     <article className="va-card"><PanelTitle icon={FileCheck2} title="ENTREGA DA ENGENHARIA"/><p className="va-notice-small">Liberados para execução: <b>{release?.projects??'—'} projetos</b> (Sem objeção + S/Obj. com ressalvas). {partialRelease?'Totais conhecidos parciais; ainda há projetos liberados sem quantitativos técnicos.':'Quantitativos técnicos dos projetos liberados.'}</p><div className="va-two-metrics"><Mini label={'Economias liberadas'+(withoutEconomies?' · parcial':'')} value={count(releasedEconomies)} context={'Água '+count(release?.water.economies.value??null)+' · Esgoto '+count(release?.sewer.economies.value??null)}/><Mini label={'Rede liberada'+(withoutNetwork?' · parcial':'')} value={km(releasedNetwork)} context={'Água '+km(release?.water.network.value??null)+' · Esgoto '+km(release?.sewer.network.value??null)}/></div>{partialRelease&&<p className="va-notice-small">Pendente: {withoutEconomies} projeto(s) sem economias técnicas e {withoutNetwork} sem metragem de rede. O total apresentado não inclui esses valores ausentes.</p>}<Link className="va-card-action" href="/engenharia">Detalhar Engenharia ↗</Link></article>

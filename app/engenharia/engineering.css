@@ -32,3 +32,14 @@
 @media(max-width:550px){.engineering-sewer-kpis{grid-template-columns:1fr}}
 
 .engineering-project-history{margin:0 0 24px;padding:18px 22px}.engineering-project-history>summary{color:#0E4E4C;font-weight:750;font-size:15px}.engineering-history-item{border-top:1px solid #D7E2E1;padding:11px 0}.engineering-history-item>strong,.engineering-history-item>small{display:block}.engineering-history-item>strong{color:#0E4E4C;font-size:14px}.engineering-history-item>small{color:#5A6463;font-size:12px}
+
+
+/* Recorte contratual anual — adição isolada na Engenharia */
+.engineering-annual-targets{margin:0 0 22px;padding:19px 22px;background:#fff;border:1px solid #D7E2E1;border-radius:12px}
+.engineering-annual-targets h2{font-size:17px;color:#0E4E4C;margin:0 0 7px;font-weight:800}
+.engineering-annual-targets p{color:#5A6463;font-size:12px;margin:0 0 12px}
+.engineering-annual-targets table{border-collapse:collapse;width:100%;min-width:650px;font-size:12px;font-variant-numeric:tabular-nums}
+.engineering-annual-targets th,.engineering-annual-targets td{padding:10px 11px;border-bottom:1px solid #D7E2E1;text-align:right}
+.engineering-annual-targets th:first-child{text-align:left}
+.engineering-annual-targets thead{background:#F2F6F5;color:#0E4E4C}
+.engineering-annual-targets tbody tr:last-child{background:#E9F4F2;color:#0E4E4C;font-weight:800}

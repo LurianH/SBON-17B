@@ -215,3 +215,91 @@
   .va-app .va-status-system:last-child{padding:0}
   .va-app .va-status-detail{gap:14px}
 }
+
+
+/* Metas e cronogramas: revisão isolada, preserva os quatro cards inferiores. */
+.va-app .va-center-grid{grid-template-columns:minmax(0,1.65fr) minmax(0,1fr)}
+.va-app .va-goals-rev{min-width:0}
+.va-goal-upper{display:grid;grid-template-columns:minmax(220px,.85fr) minmax(0,1.25fr);gap:16px;margin-top:14px}
+.va-goals-rev .va-goal-row{grid-template-columns:1fr;gap:6px;margin:0;padding:12px 0}
+.va-goals-rev .va-goal-row+.va-goal-row{margin:0;padding:12px 0}
+.va-goals-rev .va-goal-system b{font-size:15px}
+.va-goals-rev .va-goal-system svg{width:22px}
+.va-goals-rev .va-goal-graphic{padding-left:29px}
+.va-goals-rev .va-goal-percent{display:none}
+.va-goals-rev .va-goal-numbers{font-size:10px}
+.va-goals-rev .va-goal-context{font-size:11px}
+.va-plan-timelines{border:1px solid #E2ECEA;border-radius:9px;background:#F8FBFA;padding:12px;min-width:0}
+.va-plan-timelines h3,.va-plan-lower h3{font-size:12px;color:#0E4E4C;margin:0 0 12px;font-weight:800}
+.va-plan-timeline{display:grid;grid-template-columns:minmax(120px,.9fr) minmax(0,1.2fr);gap:12px;align-items:center;margin:11px 0 20px}
+.va-plan-timeline b,.va-plan-timeline small{display:block}
+.va-plan-timeline b{font-size:12px;color:#123149}
+.va-plan-timeline small{font-size:10px;color:#5A6463;margin-top:4px;line-height:1.3}
+.va-time-track{display:flex;justify-content:space-between;align-items:center;border-top:3px solid #D7E2E1;position:relative;margin-top:10px;gap:3px}
+.va-time-track span{font-size:10px;color:#0E4E4C;position:relative;padding-top:9px;white-space:nowrap}
+.va-time-track span:before{content:"";position:absolute;top:-7px;left:50%;height:10px;width:10px;transform:translateX(-50%);border-radius:50%;background:#fff;border:2px solid #007977}
+.va-time-project span:nth-child(2){color:#B53227;font-weight:800}
+.va-time-project span:nth-child(2):before{border-color:#B53227;background:#B53227}
+.va-plan-lower{border-top:1px solid #D7E2E1;padding-top:15px;margin-top:15px;display:grid;grid-template-columns:minmax(0,1fr) 165px;gap:12px}
+.va-plan-assessment p{font-size:11px;color:#5A6463;margin:0 0 9px}
+.va-plan-years{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.va-plan-years>div{border:1px solid #E2ECEA;background:#F8FBFA;border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.va-plan-years b{color:#123149;font-size:13px}
+.va-plan-years span,.va-plan-years small{font-size:10px;color:#5A6463;line-height:1.35}
+.va-plan-years em{font-style:normal;color:#0E4E4C;font-size:10px;font-weight:700}
+.va-plan-targets{border:1px solid #E2ECEA;border-radius:8px;padding:10px}
+.va-plan-targets>div{display:flex;justify-content:space-between;gap:8px;padding:5px 0;font-size:11px}
+.va-plan-targets>div b{color:#123149}
+.va-plan-targets .va-plan-total{border-top:1px solid #D7E2E1;font-weight:800}
+.va-plan-targets>small{font-size:9px;color:#5A6463}
+@media(max-width:1350px){.va-app .va-center-grid{grid-template-columns:1fr}.va-goal-upper{grid-template-columns:1fr 1.2fr}}
+@media(max-width:750px){.va-goal-upper,.va-plan-lower{grid-template-columns:1fr}.va-plan-years{grid-template-columns:1fr}.va-plan-timeline{grid-template-columns:1fr}}
+
+.va-traffic{display:inline-flex;align-items:center;gap:5px;border-radius:6px;padding:5px 7px;font-size:10px;font-weight:750;font-style:normal}.va-traffic i{width:9px;height:9px;border-radius:50%;flex:0 0 9px}.va-traffic-unknown{background:#EDF1F1;color:#586663}.va-traffic-unknown i{background:#AAB9B7}.va-time-track span{font-variant-numeric:tabular-nums}
+
+.va-time-area{min-width:0}.va-project-progress{height:9px;border-radius:7px;background:#E1EBE9;overflow:hidden;margin:2px 0 5px}.va-project-progress>i{display:block;height:100%;background:#007977;border-radius:7px;min-width:0}.va-project-progress-label{display:block;color:#0E4E4C;font-size:10px;font-weight:700;margin-bottom:15px}.va-time-area .va-time-track{margin-top:8px}
+
+.va-plan-signal{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:6px 0}.va-plan-signal b{font-size:10px;color:#0E4E4C}.va-plan-signal small{font-size:9px;color:#64706e;line-height:1.3;width:100%}.va-signal-dot{display:inline-block;width:10px;height:10px;border-radius:50%;flex:0 0 10px}.va-signal-incompleto{background:#9ba8a6}.va-signal-verde{background:#198753}.va-signal-amarelo{background:#e2a01c}.va-signal-vermelho{background:#c63d32}
+
+
+/* Barras duplas por sistema — execução e entrega de projetos */
+.va-goals-rev .va-double-progress{padding-left:0}
+.va-goals-rev .va-measure{margin-top:10px}
+.va-goals-rev .va-measure-heading{display:flex;justify-content:space-between;gap:8px;align-items:baseline;margin-bottom:6px}
+.va-goals-rev .va-measure-heading b{font-size:11px;color:#123149}
+.va-goals-rev .va-measure-heading small{font-size:10px;color:#5A6463;text-align:right}
+.va-goals-rev .va-measure .va-progress{height:10px;background:#E5EDEC}
+.va-goals-rev .va-measure .va-goal-numbers{margin-top:6px;font-size:10px}
+.va-goals-rev .va-measure+.va-measure{margin-top:15px}
+
+.va-project-reference{display:flex;flex-direction:column;gap:5px;margin-bottom:9px}.va-project-reference span{font-size:10px;color:#586663}.va-project-reference b{color:#123149}.va-project-progress-reference>i{background:#A9BAB7}.va-project-progress-reference{margin:0}
+
+.va-separated-goal{padding:12px 0;border-bottom:1px solid #D7E2E1}.va-separated-goal:last-child{border-bottom:0}.va-separated-goal>b{display:block;font-size:12px;color:#123149;margin-bottom:5px}.va-separated-goal>small{display:block;font-size:10px;line-height:1.45;color:#5A6463;margin:6px 0 12px}.va-separated-goal .va-time-track{margin:18px 0 17px}.va-separate-summary{display:flex;justify-content:space-between;flex-wrap:wrap;gap:7px;font-size:10px;color:#5A6463;margin-top:8px}.va-separate-summary b{color:#123149}
+
+.va-progress-unclassified{display:flex;align-items:center;justify-content:center;min-height:20px;height:auto;background:repeating-linear-gradient(135deg,#edf2f2,#edf2f2 8px,#e0e9e8 8px,#e0e9e8 16px);border:1px dashed #a9b9b6;border-radius:7px;color:#536966;font-size:10px;font-weight:600}.va-progress-unclassified>span{width:auto!important;height:auto!important;background:none!important}
+
+/* Cronograma executivo compacto: apenas os blocos solicitados */
+.va-timeline-executive{padding:10px 12px!important}
+.va-exec-lane{background:#f8fbfa;border:1px solid #e1eae8;border-radius:9px;padding:10px 12px;margin-top:9px;min-width:0}
+.va-exec-lane>b{display:block;font-size:12px;color:#123149}
+.va-exec-lane>b small{font-weight:500;color:#657573;font-size:10px}
+.va-exec-milestones{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));position:relative;margin:15px 5px 0;align-items:center}
+.va-exec-milestones:before{content:"";height:2px;background:#cbdedb;position:absolute;top:27px;left:12%;right:12%}
+.va-exec-milestones>div{display:flex;align-items:center;flex-direction:column;min-width:0;gap:4px;position:relative}
+.va-exec-milestones strong{font-size:13px;color:#123149}
+.va-exec-milestones small{font-size:10px;color:#597371;text-align:center}
+.va-lane-point{display:block;width:14px;height:14px;border:2px solid #008b88;background:#fff;border-radius:100%;z-index:1}
+.va-point-current{background:#008b88}
+.va-engineering-milestones{grid-template-columns:repeat(4,minmax(0,1fr))}
+.va-engineering-milestones:before{left:9%;right:9%}
+.va-exec-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:10px}
+.va-exec-kpis>div{border:1px solid #dfeae8;border-radius:8px;padding:9px 7px;display:flex;flex-direction:column;gap:3px;background:#fff}
+.va-exec-kpis small{font-size:9px;font-weight:750;color:#075d59}
+.va-exec-kpis b{font-size:13px;color:#123149;white-space:nowrap}
+.va-exec-kpis span{font-size:9px;color:#6b7e7b}
+.va-plan-lower-executive .va-plan-years strong{font-size:13px;color:#123149}
+.va-plan-lower-executive .va-plan-years strong small{font-size:9px;font-weight:400}
+.va-plan-lower-executive .va-mini-track{height:7px;border-radius:12px;background:#e3edeb;margin:4px 0}
+.va-plan-lower-executive .va-plan-assessment h3{margin-bottom:10px}
+.va-plan-lower-executive .va-plan-years>div{gap:7px}
+@media(max-width:900px){.va-exec-kpis{grid-template-columns:1fr}.va-exec-kpis>div{flex-direction:row;justify-content:space-between}.va-exec-milestones strong{font-size:11px}.va-exec-milestones small{font-size:9px}}

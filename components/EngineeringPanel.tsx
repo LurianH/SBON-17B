@@ -7,6 +7,7 @@ import {canWriteEngineering, conceptLabels, currentProjects, deliveryLabels, emp
   municipalities, segments, type Category, type EngineeringFilters, type Project, type Update} from '@/lib/engineering';
 import {EngineeringProjectHub} from '@/components/EngineeringProjectHub';
 import {EngineeringManagementOverview} from '@/components/EngineeringManagementOverview';
+import {EngineeringAnnualTargets} from '@/components/EngineeringAnnualTargets';
 
 import type {ProjectReviewRow} from '@/lib/project-review-status';
 import type {GisProjectRow} from '@/lib/gis-project-model';
@@ -43,6 +44,7 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
   ];
   return <div className="engineering">
     <div id="engenharia-aprovacoes"><EngineeringManagementOverview projects={visible} reviews={reviewRows}/></div>
+    <EngineeringAnnualTargets contractId={contractId}/>
     <div className="engineering-toolbar"><p>Projetos cadastrados por mancha e sistema, com situação gerencial</p><div>{role !== 'DIRETORIA' && <button onClick={() => setDirector(!director)}>{director ? 'Sair do Modo Diretoria' : 'Modo Diretoria'}</button>}</div></div>
     {notice && <p role="alert" className="engineering-notice">{notice}</p>}
     {feedback && <p role="status" className="engineering-notice">{feedback}</p>}
