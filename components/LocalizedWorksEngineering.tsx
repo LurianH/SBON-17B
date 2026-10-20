@@ -148,6 +148,49 @@ export function LocalizedWorksEngineering({role,contractId,projects,initialWorks
   if(!spec){openRecord(work);return;}
   openRecord({...work,power:spec.power,flow:spec.flow,hmt:spec.hmt,notes:[work.notes,spec.notes].filter(Boolean).join(' | ')});
  }
+
+ const [batchConfirm,setBatchConfirm]=useState(false);
+ async function applyTechnicalBatch(){
+  if(!canEdit||!contractId||!LOCALIZED_DATABASE_ENABLED||saving.current)return;
+  saving.current=true;setBusy(true);setMessage('Conferindo cadastro atual antes de gravar…');
+  try{
+   const fresh=await listLocalizedWorksForContract(contractId);
+   const records=fresh.map(localizedRecordFromDatabase);
+   const identify=(stain:string,name:string)=>records.filter(r=>r.kind==='EEE'&&r.stain===stain&&r.name===name);
+   const specs=[
+    {stain:'553_AF_92',name:'EEE',power:'25.15',flow:'3.33',hmt:'50.07',label:'EEE 01 — Ypê I; Kronox BE06R, 18,5 kW'},
+    {stain:'553_AF_92',name:'EEE 2',power:'29.91',flow:'3.89',hmt:'51.61',label:'EEE 02 — Ypê I; Kronox BE06H, 22 kW'},
+    {stain:'553_AF_91',name:'EEE 1',power:'2.04',flow:'1.39',hmt:'13.98',label:'EEE 03 — Ypê II; Kronox BE01, 1,5 kW'},
+    {stain:'553_AF_91',name:'EEE Ypê II 2',power:'40.79',flow:'10.56',hmt:'54.29',label:'EEE 04 — Ypê II; Kronox BE06H, 30 kW'}
+   ];
+   const found=specs.map(spec=>({spec,matches:identify(spec.stain,spec.name)}));
+   const sao=records.filter(r=>r.kind==='BOOSTER'&&r.name==='Booster São João'&&r.stain==='553_AF_292');
+   const vidas=records.filter(r=>r.kind==='BOOSTER'&&(/vidas novas|núcleo santino/i).test(r.name));
+   if(found.some(x=>x.matches.length!==1)||sao.length!==1||vidas.length>1)throw new Error('Cadastro inconsistente ou duplicado. Nenhum registro foi gravado; revise os vínculos das EEEs e boosters.');
+   const note=(old:string,detail:string)=>old.includes(detail)?old:[old,detail].filter(Boolean).join(' | ');
+   const date=localizedToday();
+   let saved=0;
+   for(const {spec,matches} of found){
+    const rec=matches[0];
+    if(Number(rec.power)===Number(spec.power)&&Number(rec.flow)===Number(spec.flow)&&Number(rec.hmt)===Number(spec.hmt)&&rec.notes.includes(spec.label))continue;
+    const revised={...rec,power:spec.power,flow:spec.flow,hmt:spec.hmt,referenceDate:date,notes:note(rec.notes,spec.label+'; bomba em linha, rotor vortex cônico; 1 operante + 1 reserva (1+1R).')};
+    await saveLocalizedWorkUpdate(rec.id,localizedPayload(revised).update);saved++;
+   }
+   const sj=sao[0];const sjDetail='Booster São João — parâmetros de projeto 1,210 L/s, 31 mca, 2 CV.';
+   if(Number(sj.power)!==2||Number(sj.flow)!==1.21||Number(sj.hmt)!==31||!sj.notes.includes(sjDetail)){
+    await saveLocalizedWorkUpdate(sj.id,localizedPayload({...sj,power:'2',flow:'1.210',hmt:'31',referenceDate:date,notes:note(sj.notes,sjDetail)}).update);saved++;
+   }
+   if(!vidas.length){
+    const newWork={...empty,id:'',name:'Booster Vidas Novas / Núcleo Santino',kind:'BOOSTER' as const,city:'Porangaba',stain:'553_AF_88',planRowKey:'attack-2026-10',units:'1',flow:'1.701',hmt:'34',power:'2',referenceDate:date,notes:'Implantação: 553_AF_88 (Vidas Novas); também atende 553_AF_0001N (Núcleo Santino). Parâmetros de projeto: 1,701 L/s, 34 mca, 2 CV.'};
+    const payload=localizedPayload(newWork);
+    await saveNewLocalizedWork(payload.work,payload.update);saved++;
+   }
+   const updated=await listLocalizedWorksForContract(contractId);
+   replaceRows(updated.map(localizedRecordFromDatabase));setLoadedIds(updated.map(w=>w.id));
+   setMessage('Atualização em lote concluída: '+saved+' registro(s) gravado(s) com histórico. Os já conformes não foram duplicados.');
+  }catch(error){setMessage('Atualização interrompida: '+(error instanceof Error?error.message:'Erro inesperado')+'. Consulte o histórico; atualizações anteriores à falha podem ter sido salvas.');}
+  finally{saving.current=false;setBusy(false);setBatchConfirm(false);}
+ }
  function prepareVidasBooster(){
   const existing=rows.find(r=>r.kind==='BOOSTER'&&(/vidas novas|núcleo santino/i).test(r.name));
   if(existing){openRecord(existing);setMessage('Booster já cadastrado: abrindo atualização para evitar duplicidade.');return;}
@@ -159,6 +202,8 @@ export function LocalizedWorksEngineering({role,contractId,projects,initialWorks
  return <section className="panel localized-works" aria-label="Obras localizadas">
   <div className="localized-heading"><div><span className="localized-eyebrow">ENGENHARIA · OBRAS LOCALIZADAS</span><h2>Reservatórios, boosters e EEEs</h2><p>Controle técnico por mancha, separado das redes lineares, economias e medições.</p></div>{canEdit&&available&&<button type="button" disabled={busy} onClick={()=>openRecord({...empty,referenceDate:localizedToday()})}>Cadastrar estrutura</button>}</div>
   {canEdit&&available&&<button type="button" disabled={busy} onClick={prepareVidasBooster}>Preparar Booster Vidas Novas (sem duplicar)</button>}
+  {canEdit&&available&&LOCALIZED_DATABASE_ENABLED&&<div className="localized-batch-update"><button type="button" disabled={busy} onClick={()=>setBatchConfirm(v=>!v)}>Aplicar atualizações técnicas em lote</button>{batchConfirm&&<div role="group" aria-label="Confirmação das atualizações técnicas"><p>Atualizar 4 EEEs e Booster São João; incluir um único Booster Vidas Novas (553_AF_88, atende também 553_AF_0001N). Preservar históricos e evitar duplicidades. As potências, vazões e HMTs serão registradas como dados de projeto, sem alterar situação física ou orçamentária.</p><button type="button" disabled={busy} onClick={()=>void applyTechnicalBatch()}>Confirmar e salvar no Supabase</button><button type="button" disabled={busy} onClick={()=>setBatchConfirm(false)}>Cancelar</button></div>}</div>}
+
   {notice&&<p role="alert" className="localized-warning">{notice}</p>}
   <p className="localized-warning">{LOCALIZED_DATABASE_ENABLED?'Cadastros centralizados com histórico permanente. Cada atualização acrescenta um novo registro.':'Cadastro central aguardando liberação. Os rascunhos anteriores permanecem neste navegador.'}</p>
   <div className="localized-preview-actions"><button type="button" onClick={exportBackup}>Exportar registros</button>{!LOCALIZED_DATABASE_ENABLED&&<><button type="button" disabled={!canEdit} onClick={()=>fileInput.current?.click()}>Importar arquivo</button><input ref={fileInput} type="file" accept="application/json,.json" aria-label="Importar arquivo de Obras Localizadas" style={{display:'none'}} onChange={e=>{const file=e.target.files?.[0];if(file)void importBackup(file);e.target.value='';}}/><button type="button" onClick={()=>setShowHistory(v=>!v)}>{showHistory?'Ocultar histórico local':'Histórico local'}</button></>}</div>
