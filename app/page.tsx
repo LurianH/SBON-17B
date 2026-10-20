@@ -23,6 +23,8 @@ const absence='Ainda não informado';
 // Recorte contratual confirmado pela fiscalização; não representa execução realizada.
 const officialAnnualTargets:Record<number,number>={2026:1709,2027:8124,2028:4588};
 const officialContractTotal=14421;
+const staticGroups=[['553-AF-92'],['553-AF-91'],['687-AF-73'],['687-AF-47','687-AF-52'],['764-AF-109','764-AF-111','764-AF-113','764-AF-97']];
+const releasedStatus=(v:string)=>v==='NO_OBJECTION'||v==='NO_OBJECTION_RESERVATIONS';
 
 function PanelTitle({icon:Icon,title,action}:{icon:typeof Target,title:string,action?:React.ReactNode}){
  return <div className="va-panel-title"><div><Icon size={22} strokeWidth={2.2}/><h2>{title}</h2></div>{action}</div>;
@@ -70,6 +72,7 @@ export default function Dashboard(){
  const [stainState,setStainState]=useState<StainState|null>(null);
  const [annualTargets,setAnnualTargets]=useState<{year:number;total:number}[]>([]);
  const [attack2026,setAttack2026]=useState<{economies:number;stains:number}|null>(null);
+ const [staticDelivery,setStaticDelivery]=useState<{date:string;count:number}[]|null>(null);
  useEffect(()=>{
   let active=true;
   void (async()=>{
@@ -86,6 +89,33 @@ export default function Dashboard(){
     db.from('engineering_attack_plan_2026').select('stain_id,planned_economies')
    ]);
    if(!active)return;
+
+   const projectResult=await db.from('engineering_projects').select('id,project_name').eq('contract_id',result.contractId).eq('segment_type','SEWER').eq('active',true);
+   if(active&&projectResult.data&&!projectResult.error){
+    const projects=projectResult.data.filter(p=>staticGroups.some(group=>group.some(code=>String(p.project_name).includes(code))));
+    if(projects.length){
+     const ids=projects.map(p=>String(p.id));
+     const [reviewResult,historyResult]=await Promise.all([
+      db.from('engineering_project_review_status').select('engineering_project_id,status,updated_at').in('engineering_project_id',ids),
+      db.from('engineering_project_review_history').select('engineering_project_id,new_status,changed_at').in('engineering_project_id',ids).order('changed_at',{ascending:true})
+     ]);
+     if(active&&reviewResult.data&&!reviewResult.error){
+      const byId=new Map(reviewResult.data.map(r=>[String(r.engineering_project_id),r]));
+      const dates:string[]=[];
+      for(const group of staticGroups){
+       const matching=group.map(code=>projects.find(p=>String(p.project_name).includes(code)));
+       if(matching.some(p=>!p))continue;
+       if(matching.some(p=>!releasedStatus(String(byId.get(String(p!.id))?.status??''))))continue;
+       const stamps=matching.map(p=>{
+        const events=(historyResult.data??[]).filter(h=>String(h.engineering_project_id)===String(p!.id)&&releasedStatus(String(h.new_status)));
+        return String(events[0]?.changed_at??byId.get(String(p!.id))?.updated_at??'');
+       });
+       if(stamps.every(Boolean))dates.push(stamps.sort().at(-1)!.slice(0,10));
+      }
+      setStaticDelivery(dates.sort().map((date,i)=>({date,count:i+1})));
+     }
+    }
+   }
    if(!attack.error&&attack.data){const unique=new Set(attack.data.map(row=>String(row.stain_id)).filter(Boolean));setAttack2026({economies:attack.data.reduce((n,row)=>n+(Number.isFinite(Number(row.planned_economies))?Math.max(0,Number(row.planned_economies)):0),0),stains:unique.size});}
    if(!annual.error&&annual.data)setAnnualTargets(annual.data.map(row=>({year:Number(row.year),total:Number(row.target_economies)})));
    if(!works.error&&works.data){
@@ -163,7 +193,7 @@ export default function Dashboard(){
  <div className="va-plan-targets"><h3>METAS POR ANO</h3>{[2026,2027,2028].map(year=><div key={year}><span>{year}</span><b>{count(annualGoal(year))}</b></div>)}<div className="va-plan-total"><span>Total</span><b>{count(officialContractTotal)}</b></div>{annualTargetsMismatch&&<small>Revisar metas anuais cadastradas.</small>}</div>
 </div>
     </article>
-    <article className="va-card va-status"><PanelTitle icon={CheckCircle2} title="STATUS DAS MANCHAS POR SISTEMA" action={<Link className="va-inline-link" href="/engenharia#engenharia-classificacao">Atualizar status ↗</Link>}/><div className="va-status-grid"><StatusSystem system="Água" total={stainState?.totals.WATER??38} counts={stainState?.counts.WATER??null}/><StatusSystem system="Esgoto" total={stainState?.totals.SEWER??84} counts={stainState?.counts.SEWER??null}/></div><p className="va-notice-small">Uma mancha corresponde a um projeto por sistema: a classificação da Engenharia é refletida aqui. Projetos sem avaliação permanecem como não classificados.</p><div className="va-static-chart"><h3>CURVA S · ESTÁTICA ESGOTO</h3><div className="va-static-legend">Planejado <span style={{color:'#008681'}}>━━</span> · Em finalização <span style={{color:'#df8b24'}}>┄┄</span></div><svg viewBox="0 0 400 172" role="img" aria-label="Curva acumulada planejada suavizada: duas frentes em 16 de outubro, três em 23 de outubro e cinco em 30 de outubro. Duas frentes estão em finalização, sem conclusão formal registrada."><line x1="36" y1="135" x2="382" y2="135" stroke="#b9d3d0"/><line x1="36" y1="20" x2="36" y2="135" stroke="#b9d3d0"/><path d="M36 135 C78 135 105 116 142 90 S212 76 250 67 S335 29 374 20" fill="none" stroke="#008681" strokeWidth="3" strokeLinecap="round"/><path d="M36 135 C74 135 112 110 177 90 L208 90" fill="none" stroke="#df8b24" strokeWidth="3" strokeDasharray="7 5" strokeLinecap="round"/><circle cx="142" cy="90" r="4" fill="#008681"/><circle cx="250" cy="67" r="4" fill="#008681"/><circle cx="374" cy="20" r="4" fill="#008681"/><circle cx="208" cy="90" r="5" fill="#fff" stroke="#df8b24" strokeWidth="3"/><text x="27" y="139" textAnchor="end" fontSize="11">0</text><text x="27" y="93" textAnchor="end" fontSize="11">2</text><text x="27" y="70" textAnchor="end" fontSize="11">3</text><text x="27" y="24" textAnchor="end" fontSize="11">5</text><text x="142" y="157" textAnchor="middle" fontSize="11">16/10</text><text x="250" y="157" textAnchor="middle" fontSize="11">23/10</text><text x="374" y="157" textAnchor="middle" fontSize="11">30/10</text></svg><div className="va-static-foot"><span>Planejado em 20/10: <b>2 de 5</b></span><span>Em finalização: <b>2 de 5</b></span></div><small>Ypê I e Ypê II em finalização, ainda não concluídos formalmente. A linha laranja indica situação informada, não uma série histórica aferida. Curva planejada suavizada entre os marcos da Estática.</small></div></article>
+    <article className="va-card va-status"><PanelTitle icon={CheckCircle2} title="STATUS DAS MANCHAS POR SISTEMA" action={<Link className="va-inline-link" href="/engenharia#engenharia-classificacao">Atualizar status ↗</Link>}/><div className="va-status-grid"><StatusSystem system="Água" total={stainState?.totals.WATER??38} counts={stainState?.counts.WATER??null}/><StatusSystem system="Esgoto" total={stainState?.totals.SEWER??84} counts={stainState?.counts.SEWER??null}/></div><p className="va-notice-small">Uma mancha corresponde a um projeto por sistema: a classificação da Engenharia é refletida aqui. Projetos sem avaliação permanecem como não classificados.</p><div className="va-static-chart"><h3>CURVA S · ESTÁTICA ESGOTO</h3><div className="va-static-legend">Planejado <span style={{color:'#008681'}}>━━</span> · Em finalização <span style={{color:'#df8b24'}}>┄┄</span></div><svg viewBox="0 0 400 172" role="img" aria-label="Curva acumulada planejada suavizada: duas frentes em 16 de outubro, três em 23 de outubro e cinco em 30 de outubro. Duas frentes estão em finalização, sem conclusão formal registrada."><line x1="36" y1="135" x2="382" y2="135" stroke="#b9d3d0"/><line x1="36" y1="20" x2="36" y2="135" stroke="#b9d3d0"/><path d="M36 135 C78 135 105 116 142 90 S212 76 250 67 S335 29 374 20" fill="none" stroke="#008681" strokeWidth="3" strokeLinecap="round"/>{staticDelivery!==null&&staticDelivery.length>0&&<polyline points={['36,135',...staticDelivery.map(item=>{const t=(Date.parse(item.date+'T12:00:00')-Date.parse('2026-10-09T12:00:00'))/(Date.parse('2026-10-30T12:00:00')-Date.parse('2026-10-09T12:00:00'));return (36+Math.max(0,Math.min(1,t))*338)+','+(135-item.count*23)})].join(' ')} fill="none" stroke="#df8b24" strokeWidth="3" strokeDasharray="7 5" strokeLinecap="round" strokeLinejoin="round"/>}<circle cx="142" cy="90" r="4" fill="#008681"/><circle cx="250" cy="67" r="4" fill="#008681"/><circle cx="374" cy="20" r="4" fill="#008681"/><text x="27" y="139" textAnchor="end" fontSize="11">0</text><text x="27" y="93" textAnchor="end" fontSize="11">2</text><text x="27" y="70" textAnchor="end" fontSize="11">3</text><text x="27" y="24" textAnchor="end" fontSize="11">5</text><text x="142" y="157" textAnchor="middle" fontSize="11">16/10</text><text x="250" y="157" textAnchor="middle" fontSize="11">23/10</text><text x="374" y="157" textAnchor="middle" fontSize="11">30/10</text></svg><div className="va-static-foot"><span>Planejado em 20/10: <b>2 de 5</b></span><span>Concluídas formalmente: <b>{staticDelivery===null?'em apuração':staticDelivery.length+' de 5'}</b></span></div><small>Ypê I e Ypê II em finalização, ainda não concluídos formalmente. A linha laranja representa liberações formais registradas na Engenharia, e é atualizada após recarregar a página.</small></div></article>
    </section>
    <section className="va-bottom-grid">
     <article className="va-card"><PanelTitle icon={FileCheck2} title="ENTREGA DA ENGENHARIA"/><p className="va-notice-small"><b>{release?.projects??'—'} projetos liberados</b>{partialRelease?' · Quantitativos parciais':' · Quantitativos informados'}</p><div className="va-two-metrics"><Mini label={'Economias liberadas'+(withoutEconomies?' · parcial':'')} value={count(releasedEconomies)} context={'Água '+count(release?.water.economies.value??null)+' · Esgoto '+count(release?.sewer.economies.value??null)}/><Mini label={'Rede liberada'+(withoutNetwork?' · parcial':'')} value={km(releasedNetwork)} context={'Água '+km(release?.water.network.value??null)+' · Esgoto '+km(release?.sewer.network.value??null)}/></div>{partialRelease&&<p className="va-notice-small">Pendências: {withoutEconomies} sem economias · {withoutNetwork} sem metragem. Consulte os projetos em Engenharia.</p>}<Link className="va-card-action" href="/engenharia">Detalhar Engenharia ↗</Link></article>
