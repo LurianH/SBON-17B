@@ -130,11 +130,17 @@ export function LocalizedWorksEngineering({role,contractId,projects,initialWorks
  const editingPersisted=Boolean(editing&&isPersisted(editing.id));
  const eligibleProjects=selectedPlan?projects.filter(p=>p.active&&p.contract_id===contractId&&p.municipality===selectedPlan.municipality&&p.segment_type===selectedPlan.segment):[];
  const suggestedLink=selectedPlan&&contractId?resolveEngineeringProjectLinks(projects,contractId).find(r=>r.rowKey===selectedPlan.rowKey):null;
+ function prepareVidasBooster(){
+  const existing=rows.find(r=>r.kind==='BOOSTER'&&(/vidas novas|núcleo santino/i).test(r.name));
+  if(existing){openRecord(existing);setMessage('Booster já cadastrado: abrindo atualização para evitar duplicidade.');return;}
+  openRecord({...empty,id:'',kind:'BOOSTER',name:'Booster Vidas Novas / Núcleo Santino',city:'Porangaba',stain:'553_AF_88',planRowKey:'attack-2026-10',units:'1',flow:'1.701',hmt:'34',power:'2',notes:'Implantação: mancha 553_AF_88 (Vidas Novas). Área adicional atendida: 553_AF_0001N (Núcleo Santino). Dados de projeto informados; verificar aprovação técnica.'});
+ }
  function openRecord(record:RecordWork){
   setEditing({...record,referenceDate:localizedToday()});setMessage('');
  }
  return <section className="panel localized-works" aria-label="Obras localizadas">
   <div className="localized-heading"><div><span className="localized-eyebrow">ENGENHARIA · OBRAS LOCALIZADAS</span><h2>Reservatórios, boosters e EEEs</h2><p>Controle técnico por mancha, separado das redes lineares, economias e medições.</p></div>{canEdit&&available&&<button type="button" disabled={busy} onClick={()=>openRecord({...empty,referenceDate:localizedToday()})}>Cadastrar estrutura</button>}</div>
+  {canEdit&&available&&<button type="button" disabled={busy} onClick={prepareVidasBooster}>Preparar Booster Vidas Novas (sem duplicar)</button>}
   {notice&&<p role="alert" className="localized-warning">{notice}</p>}
   <p className="localized-warning">{LOCALIZED_DATABASE_ENABLED?'Cadastros centralizados com histórico permanente. Cada atualização acrescenta um novo registro.':'Cadastro central aguardando liberação. Os rascunhos anteriores permanecem neste navegador.'}</p>
   <div className="localized-preview-actions"><button type="button" onClick={exportBackup}>Exportar registros</button>{!LOCALIZED_DATABASE_ENABLED&&<><button type="button" disabled={!canEdit} onClick={()=>fileInput.current?.click()}>Importar arquivo</button><input ref={fileInput} type="file" accept="application/json,.json" aria-label="Importar arquivo de Obras Localizadas" style={{display:'none'}} onChange={e=>{const file=e.target.files?.[0];if(file)void importBackup(file);e.target.value='';}}/><button type="button" onClick={()=>setShowHistory(v=>!v)}>{showHistory?'Ocultar histórico local':'Histórico local'}</button></>}</div>
