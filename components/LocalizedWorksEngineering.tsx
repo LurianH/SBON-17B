@@ -130,6 +130,24 @@ export function LocalizedWorksEngineering({role,contractId,projects,initialWorks
  const editingPersisted=Boolean(editing&&isPersisted(editing.id));
  const eligibleProjects=selectedPlan?projects.filter(p=>p.active&&p.contract_id===contractId&&p.municipality===selectedPlan.municipality&&p.segment_type===selectedPlan.segment):[];
  const suggestedLink=selectedPlan&&contractId?resolveEngineeringProjectLinks(projects,contractId).find(r=>r.rowKey===selectedPlan.rowKey):null;
+ function prepareEquipment(work:RecordWork){
+  const specs:Record<string,{power:string;flow:string;hmt:string;notes:string}>={
+   'EEE 1':{power:'25.15',flow:'3.33',hmt:'50.07',notes:'EEE 01 — Ypê I · Kronox BE06R 18,5 kW; bomba em linha, rotor vortex cônico; configuração 1 operante + 1 reserva (1+1R).'},
+   'EEE':{power:'29.91',flow:'3.89',hmt:'51.61',notes:'EEE 02 — Ypê I · Kronox BE06H 22 kW; bomba em linha, rotor vortex cônico; configuração 1 operante + 1 reserva (1+1R).'},
+   'EEE 2':{power:'29.91',flow:'3.89',hmt:'51.61',notes:'EEE 02 — Ypê I · Kronox BE06H 22 kW; bomba em linha, rotor vortex cônico; configuração 1 operante + 1 reserva (1+1R).'},
+   'EEE Ypê II 2':{power:'40.79',flow:'10.56',hmt:'54.29',notes:'EEE 04 — Ypê II · Kronox BE06H 30 kW; bomba em linha, rotor vortex cônico; configuração 1 operante + 1 reserva (1+1R).'},
+   'Booster São João':{power:'2',flow:'1.210',hmt:'31',notes:'Booster São João — valores de projeto informados: 1,210 L/s, 31 mca, 2 CV.'}
+  };
+  const spec=work.name==='EEE 1'&&work.stain==='553_AF_91'
+   ?{power:'2.04',flow:'1.39',hmt:'13.98',notes:'EEE 03 — Ypê II · Kronox BE01 1,5 kW; bomba em linha, rotor vortex cônico; configuração 1 operante + 1 reserva (1+1R).'}
+   :work.name==='EEE'&&work.stain==='553_AF_92'
+   ?specs['EEE 1']
+   :work.name==='EEE 2'&&work.stain==='553_AF_92'
+   ?specs['EEE 2']
+   :specs[work.name];
+  if(!spec){openRecord(work);return;}
+  openRecord({...work,power:spec.power,flow:spec.flow,hmt:spec.hmt,notes:[work.notes,spec.notes].filter(Boolean).join(' | ')});
+ }
  function prepareVidasBooster(){
   const existing=rows.find(r=>r.kind==='BOOSTER'&&(/vidas novas|núcleo santino/i).test(r.name));
   if(existing){openRecord(existing);setMessage('Booster já cadastrado: abrindo atualização para evitar duplicidade.');return;}
@@ -163,7 +181,7 @@ export function LocalizedWorksEngineering({role,contractId,projects,initialWorks
   <div className="localized-types"><article className="localized-type"><h3>Reservatórios</h3><strong>{counts('RESERVOIR')} registro(s)</strong><p>Capacidade m³, material e projeto</p></article><article className="localized-type"><h3>Boosters</h3><strong>{counts('BOOSTER')} registro(s)</strong><p>CV, vazão (L/s) e HMT (mca)</p></article><article className="localized-type"><h3>Estações elevatórias (EEE)</h3><strong>{counts('EEE')} registro(s)</strong><p>Motobombas; hidráulico, elétrico e estrutural</p></article></div>
   <div className="localized-preview-filter"><label>Tipo de obra <select value={filter} onChange={e=>setFilter(e.target.value as typeof filter)}><option value="ALL">Todas</option>{Object.entries(kindLabels).map(([v,n])=><option key={v} value={v}>{n}</option>)}</select></label></div>
   {!visible.length&&available&&<p>Sem estruturas cadastradas para este filtro.</p>}
-  <div className="localized-table-wrap"><table className="localized-table"><thead><tr><th>Obra / estrutura</th><th>Município</th><th>Mancha</th><th>Tipo</th><th>Quant.</th><th>Dados técnicos</th><th>Orçamento</th><th>Ação</th></tr></thead><tbody>{visible.map(r=><tr key={r.id}><td>{r.name}</td><td>{r.city}</td><td>{r.stain||'A informar'}</td><td>{kindLabels[r.kind]}</td><td>{r.units}</td><td>{r.kind==='RESERVOIR'?(r.capacity?`${r.capacity} m³`:'Capacidade pendente'):`${r.power?`${r.power} CV · `:''}${r.flow?`${r.flow} L/s · `:''}${r.hmt?`${r.hmt} mca`:'Dados pendentes'}`}</td><td>{budgetLabels[r.budget]}</td><td>{canEdit&&available&&<button type="button" disabled={busy} onClick={()=>openRecord(r)}>{isPersisted(r.id)?'Atualizar':'Editar'}</button>}{isPersisted(r.id)&&<button type="button" disabled={historyBusy} onClick={()=>void readHistory(r)}>Histórico</button>}</td></tr>)}</tbody></table></div>
+  <div className="localized-table-wrap"><table className="localized-table"><thead><tr><th>Obra / estrutura</th><th>Município</th><th>Mancha</th><th>Tipo</th><th>Quant.</th><th>Dados técnicos</th><th>Orçamento</th><th>Ação</th></tr></thead><tbody>{visible.map(r=><tr key={r.id}><td>{r.name}</td><td>{r.city}</td><td>{r.stain||'A informar'}</td><td>{kindLabels[r.kind]}</td><td>{r.units}</td><td>{r.kind==='RESERVOIR'?(r.capacity?`${r.capacity} m³`:'Capacidade pendente'):`${r.power?`${r.power} CV · `:''}${r.flow?`${r.flow} L/s · `:''}${r.hmt?`${r.hmt} mca`:'Dados pendentes'}`}</td><td>{budgetLabels[r.budget]}</td><td>{canEdit&&available&&<button type="button" disabled={busy} onClick={()=>prepareEquipment(r)}>{isPersisted(r.id)?'Atualizar':'Editar'}</button>}{isPersisted(r.id)&&<button type="button" disabled={historyBusy} onClick={()=>void readHistory(r)}>Histórico</button>}</td></tr>)}</tbody></table></div>
   {editing&&canEdit&&available&&<form onSubmit={submit} className="localized-preview-form"><h3>{editingPersisted?'Nova atualização':'Cadastrar estrutura'}</h3><fieldset disabled={busy} className="localized-preview-fields">
    <label>Obra / estrutura<input required maxLength={150} disabled={editingPersisted||busy} value={editing.name} onChange={e=>update('name',e.target.value)}/></label>
    <label>Município<select disabled={editingPersisted||busy} value={editing.city} onChange={e=>setEditing(old=>old?{...old,city:e.target.value,stain:'',planRowKey:'',engineeringProjectId:''}:old)}>{cities.map(c=><option key={c}>{c}</option>)}</select></label>
