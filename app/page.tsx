@@ -172,20 +172,6 @@ export default function Dashboard(){
   {[2026,2027,2028].map((year)=><div key={year}><strong>{count(annualGoal(year))}</strong><span className="va-lane-point"/><small>{year}</small></div>)}
   </div>
  </div>
- <div className="va-engineering-curve" aria-label="Avanço acumulado conhecido de Engenharia e Execução">
-  <h3>EVOLUÇÃO ACUMULADA · ECONOMIAS 2026</h3>
-  <p>Posição atual da Engenharia em relação à meta anual. Sem série histórica validada, o traçado mostra somente o acumulado informado, não uma evolução mensal estimada.</p>
-  {currentYearGoal!==null&&currentYearGoal>0&&releasedEconomies!==null?<svg viewBox="0 0 420 164" role="img" aria-label={'Engenharia: '+count(releasedEconomies)+' de '+count(currentYearGoal)+' economias liberadas. Execução física: '+count(data.executed)+' economias.'}>
-   <line x1="52" y1="26" x2="390" y2="26" stroke="#b8cfcc"/><line x1="52" y1="26" x2="52" y2="140" stroke="#b8cfcc"/>
-   {[0,0.25,0.5,0.75,1].map((p)=><g key={p}><line x1={52+p*338} x2={52+p*338} y1="26" y2="140" stroke="#e0eae8"/><text x={52+p*338} y="155" textAnchor="middle" fontSize="10">{count(Math.round(currentYearGoal*p))}</text></g>)}
-   <text x="4" y="52" fontSize="10">Água</text><line x1="52" x2={52+Math.min(1,(release?.water.economies.value??0)/currentYearGoal)*338} y1="48" y2="48" stroke="#1879c4" strokeWidth="7" strokeLinecap="round"/><circle cx={52+Math.min(1,(release?.water.economies.value??0)/currentYearGoal)*338} cy="48" r="5" fill="#1879c4"/>
-   <text x="4" y="81" fontSize="10">Esgoto</text><line x1="52" x2={52+Math.min(1,(release?.sewer.economies.value??0)/currentYearGoal)*338} y1="77" y2="77" stroke="#008681" strokeWidth="7" strokeLinecap="round"/><circle cx={52+Math.min(1,(release?.sewer.economies.value??0)/currentYearGoal)*338} cy="77" r="5" fill="#008681"/>
-   <text x="4" y="110" fontSize="10">Total</text><line x1="52" x2={52+Math.min(1,releasedEconomies/currentYearGoal)*338} y1="106" y2="106" stroke="#0f4754" strokeWidth="7" strokeLinecap="round"/><circle cx={52+Math.min(1,releasedEconomies/currentYearGoal)*338} cy="106" r="5" fill="#0f4754"/>
-   <text x="4" y="139" fontSize="10">Obras</text><line x1="52" x2={52+Math.min(1,(data.executed??0)/currentYearGoal)*338} y1="135" y2="135" stroke="#d08a2b" strokeWidth="6" strokeLinecap="round"/><circle cx={52+Math.min(1,(data.executed??0)/currentYearGoal)*338} cy="135" r="4" fill="#d08a2b"/>
-  </svg>:<p>Quantitativos liberados em apuração.</p>}
-  <div className="va-static-foot"><span>Água: <b>{count(release?.water.economies.value??null)}</b></span><span>Esgoto: <b>{count(release?.sewer.economies.value??null)}</b></span><span>Engenharia: <b>{count(releasedEconomies)} / {count(currentYearGoal)}</b> ({currentYearGoal&&releasedEconomies!==null?percentage(releasedEconomies/currentYearGoal*100):'—'})</span><span>Execução: <b>{count(data.executed)}</b></span></div>
-  {partialRelease&&<small>Valores conhecidos parciais: há projetos liberados sem quantitativos de economias preenchidos.</small>}
- </div>
  <div className="va-exec-lane">
   <b>Engenharia <small>· projetos liberados</small></b>
   <div className="va-exec-milestones va-engineering-milestones">
