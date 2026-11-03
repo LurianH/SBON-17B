@@ -30,10 +30,33 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
 }) {
   const [filters, setFilters] = useState<EngineeringFilters>(emptyFilters);
   const [feedback, setFeedback] = useState('');
+  const [weeklyConfirm,setWeeklyConfirm] = useState(false);
+  const [weeklyBusy,setWeeklyBusy] = useState(false);
+  const [weeklyResult,setWeeklyResult] = useState('');
+
   const [director, setDirector] = useState(role === 'DIRETORIA');
   const all = currentProjects(projects, updates), visible = filterProjects(all, filters);
   const canEdit = canWriteEngineering(role) && Boolean(contractId) && !director;
   const filtered = Object.values(filters).some(Boolean);
+
+  async function applyConfirmedWeeklyUpdates() {
+    if (!canEdit || weeklyBusy) return;
+    setWeeklyBusy(true);
+    setWeeklyResult('');
+    try {
+      const db=createClient();
+      if(!db)throw new Error('Conexão com Supabase indisponível.');
+      const {data:{user},error:authError}=await db.auth.getUser();
+      if(authError||!user)throw new Error('É necessário estar conectado como ADMIN ou EDITOR.');
+      const {data,error}=await db.rpc('apply_sbon17b_weekly_20261103');
+      if(error)throw new Error(error.message);
+      const outcome=data as {updated?:number;unchanged?:number;total_projects?:number}|null;
+      setWeeklyResult('Atualização semanal registrada com histórico. Alterados: '+String(outcome?.updated??'—')+'; já conformes: '+String(outcome?.unchanged??'—')+'. Atualize a página para carregar os indicadores.');
+      setWeeklyConfirm(false);
+    }catch(error){
+      setWeeklyResult('Nenhuma atualização da operação foi aplicada: '+(error instanceof Error?error.message:'Erro desconhecido')+'.');
+    }finally{setWeeklyBusy(false);}
+  }
 
   const fields: {key: keyof EngineeringFilters; label: string; options: [string, string][]}[] = [
     {key: 'city', label: 'Cidade', options: municipalities.map(c => [c, c])},
@@ -48,6 +71,14 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
     <div className="engineering-toolbar"><p>Projetos cadastrados por mancha e sistema, com situação gerencial</p><div>{role !== 'DIRETORIA' && <button onClick={() => setDirector(!director)}>{director ? 'Sair do Modo Diretoria' : 'Modo Diretoria'}</button>}</div></div>
     {notice && <p role="alert" className="engineering-notice">{notice}</p>}
     {feedback && <p role="status" className="engineering-notice">{feedback}</p>}
+    {canEdit&&<section className="panel" aria-label="Atualização semanal confirmada" style={{padding:'16px',marginBottom:'14px'}}>
+      <h2 style={{fontSize:'16px',margin:'0 0 6px'}}>Atualização semanal · 03/11/2026</h2>
+      <p>Aplicar somente as decisões confirmadas: Cruz de Cedro (600,00 m; 11 economias), CH 12,5 (2.384,79 m; 13 economias), Cletos (1.524,00 m; 61 economias; PEAD 160: 896 m e PEAD 225: 628 m) e Estância (3.226,29 m; 33 economias). Os quatro ficam como <b>Sem objeção</b>.</p>
+      <p style={{fontSize:'12px'}}>Mantidos os demais projetos e dados em revisão. A operação valida os cadastros, não duplica projetos ou segmentos e grava o histórico pela sessão autenticada; se ocorrer divergência durante a conferência, a operação inteira é cancelada.</p>
+      {!weeklyConfirm?<button type="button" disabled={weeklyBusy} onClick={()=>setWeeklyConfirm(true)}>Revisar e aplicar 4 projetos confirmados</button>:<div style={{display:'flex',gap:'10px',flexWrap:'wrap'}}><button type="button" disabled={weeklyBusy} onClick={()=>void applyConfirmedWeeklyUpdates()}>{weeklyBusy?'Gravando…':'Confirmar gravação no Supabase'}</button><button type="button" disabled={weeklyBusy} onClick={()=>setWeeklyConfirm(false)}>Cancelar</button></div>}
+      {weeklyResult&&<p role="status" style={{marginTop:'10px'}}>{weeklyResult} {weeklyResult.startsWith('Atualização semanal registrada')&&<button type="button" onClick={()=>window.location.reload()}>Recarregar indicadores</button>}</p>}
+    </section>}
+
     <section className="panel engineering-filters" aria-label="Filtros de engenharia">{fields.map(f => <label key={f.key}>{f.label}<select value={filters[f.key]} onChange={e => setFilters({...filters, [f.key]: e.target.value})}><option value="">Todos</option>{f.options.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>)}<button onClick={() => setFilters(emptyFilters)}>Limpar filtros</button></section>
     {filtered && <p className="engineering-context">Indicadores e cidades refletem os filtros · {visible.length} projetos encontrados</p>}
     {!notice && !all.length && <p className="engineering-notice">Aguardando cadastro</p>}
