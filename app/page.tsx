@@ -44,7 +44,7 @@ const stepPath=(points:{date:string;count:number}[],end:string)=>{
  return result+' H '+chartX(end);
 };
 const projectCode=(name:string)=>{
- const match=name.match(/(?:^|\\s)(\\d{3}[-_](?:AF|AR)[-_]\\d+N?)(?=\\s|·|$)/i);
+ const match=name.match(/(?:^|\s)(\d{3}[-_](?:AF|AR)[-_]\d+N?)(?=\s|·|$)/i);
  return match?.[1]?.replaceAll('_','-').toUpperCase()??'';
 };
 const releasedStatus=(v:string)=>v==='NO_OBJECTION'||v==='NO_OBJECTION_RESERVATIONS';
