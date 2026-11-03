@@ -43,6 +43,37 @@ const stepPath=(points:{date:string;count:number}[],end:string)=>{
  for(const point of points)result+=' H '+chartX(point.date)+' V '+chartY(point.count);
  return result+' H '+chartX(end);
 };
+// Suavização monotônica do plano: passa exatamente pelos marcos sem ultrapassar
+// a faixa [0,7]. Não representa produtividade diária medida.
+const smoothPlannedPath=(milestones:{date:string;count:number}[])=>{
+ const nodes=[{x:chartX(scheduleStart),y:chartY(0)},...milestones.map(p=>({x:chartX(p.date),y:chartY(p.count)}))];
+ if(nodes.length<2)return '';
+ const secants=nodes.slice(1).map((p,i)=>(p.y-nodes[i].y)/(p.x-nodes[i].x));
+ const slopes=nodes.map((_,i)=>{
+   if(i===0)return secants[0];
+   if(i===nodes.length-1)return secants[secants.length-1];
+   const before=secants[i-1],after=secants[i];
+   if(before*after<=0)return 0;
+   const left=nodes[i].x-nodes[i-1].x,right=nodes[i+1].x-nodes[i].x;
+   const w1=2*right+left,w2=right+2*left;
+   return (w1+w2)/(w1/before+w2/after);
+ });
+ // Clamp each Bézier derivative to preserve monotonicity.
+ const safe=[...slopes];
+ for(let i=0;i<secants.length;i++){
+   const d=secants[i];
+   if(d===0){safe[i]=0;safe[i+1]=0;continue;}
+   const a=safe[i]/d,b=safe[i+1]/d;
+   const magnitude=a*a+b*b;
+   if(magnitude>9){const scale=3/Math.sqrt(magnitude);safe[i]=scale*a*d;safe[i+1]=scale*b*d;}
+ }
+ let path='M '+nodes[0].x+' '+nodes[0].y;
+ for(let i=0;i<nodes.length-1;i++){
+   const a=nodes[i],b=nodes[i+1],dx=(b.x-a.x)/3;
+   path+=' C '+(a.x+dx)+' '+(a.y+dx*safe[i])+' '+(b.x-dx)+' '+(b.y-dx*safe[i+1])+' '+b.x+' '+b.y;
+ }
+ return path;
+};
 const projectCode=(name:string)=>{
  const match=name.match(/(?:^|\s)(\d{3}[-_](?:AF|AR)[-_]\d+N?)(?=\s|·|$)/i);
  return match?.[1]?.replaceAll('_','-').toUpperCase()??'';
@@ -240,14 +271,14 @@ export default function Dashboard(){
  <svg viewBox="0 0 400 172" role="img" aria-label={'Cronograma revisão 0B: '+plannedNow+' de 7 frentes previstas até hoje; '+(actualNow===null?'aprovações em apuração':actualNow+' formalmente liberadas')+'.'}>
   <line x1="36" y1="135" x2="382" y2="135" stroke="#b9d3d0"/><line x1="36" y1="20" x2="36" y2="135" stroke="#b9d3d0"/>
   {[0,1,3,5,7].map(n=><g key={n}><line x1="36" x2="374" y1={chartY(n)} y2={chartY(n)} stroke="#e5eeec" strokeDasharray="2 4"/><text x="26" y={chartY(n)+4} textAnchor="end" fontSize="10">{n}</text></g>)}
-  <path d={stepPath(plannedMilestones,scheduleEnd)} fill="none" stroke="#008681" strokeWidth="3" strokeLinejoin="round"/>
+  <path d={smoothPlannedPath(plannedMilestones)} fill="none" stroke="#008681" strokeWidth="3" strokeLinejoin="round"/>
   {plannedMilestones.map(point=><circle key={point.date} cx={chartX(point.date)} cy={chartY(point.count)} r="3.7" fill="#008681"/>)}
   {staticDelivery!==null&&<><path d={stepPath(staticDelivery.filter(item=>item.date<=todayInChart),todayInChart)} fill="none" stroke="#df8b24" strokeWidth="3" strokeDasharray="7 5" strokeLinejoin="round"/><circle cx={chartX(todayInChart)} cy={chartY(actualNow??0)} r="4" fill="#fff" stroke="#df8b24" strokeWidth="2.5"/></>}
   <line x1={chartX(todayInChart)} x2={chartX(todayInChart)} y1="20" y2="135" stroke="#7c9290" strokeDasharray="3 4" strokeWidth="1.2"/>
   {['2026-10-02','2026-11-13','2026-12-11','2027-01-15'].map(value=><text key={value} x={chartX(value)} y="157" textAnchor="middle" fontSize="9">{showDate(value)}</text>)}
  </svg>
  <div className="va-static-foot"><span>Previsto até {showDate(todaySchedule)}: <b>{plannedNow} de 7</b></span><span>Liberado: <b>{actualNow===null?'em apuração':actualNow+' de 7'}</b></span><span>Aderência: <b>{adherence===null?'a apurar':percentage(adherence)}</b></span><span>Desvio: <b>{actualNow===null?'—':(actualNow-plannedNow)+' frente(s)'}</b></span></div>
- <small>Fonte: E2786-00-CR-GR-001, revisão 0B. Linha verde = término previsto das sete frentes; laranja = projetos com “Sem objeção” ou “Sem objeção com ressalvas” formalmente registrados. A comparação é conservadora: término de projeto e aprovação formal são marcos diferentes; “em finalização” não equivale a aprovação.</small>
+ <small>Fonte: E2786-00-CR-GR-001, revisão 0B. Linha verde = interpolação suave entre os marcos previstos das sete frentes (não é produtividade diária medida); laranja = projetos com “Sem objeção” ou “Sem objeção com ressalvas” formalmente registrados. A comparação é conservadora: término de projeto e aprovação formal são marcos diferentes; “em finalização” não equivale a aprovação.</small>
  <details><summary>Ver marcos previstos das 7 frentes</summary><div className="va-static-foot">{staticSchedule.map(group=><span key={group.name}>{group.name}: <b>{showDate(group.due)}</b></span>)}</div>{staticMissing.length>0&&<small>Sem vínculo cadastral completo: {staticMissing.join(', ')}.</small>}</details>
  </div></article>
    </section>
