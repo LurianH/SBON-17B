@@ -23,7 +23,30 @@ const absence='Ainda não informado';
 // Recorte contratual confirmado pela fiscalização; não representa execução realizada.
 const officialAnnualTargets:Record<number,number>={2026:1709,2027:8124,2028:4588};
 const officialContractTotal=14421;
-const staticGroups=[['553-AF-92'],['553-AF-91'],['687-AF-73'],['687-AF-47','687-AF-52'],['764-AF-109','764-AF-111','764-AF-113','764-AF-97']];
+// Cronograma Fase 1, revisão 0B (E2786-00-CR-GR-001): datas da linha principal de cada frente.
+// São marcos de término previstos, não aprovações formais nem percentuais físicos interpolados.
+const staticSchedule=[
+ {name:'Vila Americana',codes:['687-AF-73'],due:'2026-10-02'},
+ {name:'Ypê I',codes:['553-AF-92'],due:'2026-11-13'},
+ {name:'Ypê II',codes:['553-AF-91'],due:'2026-11-13'},
+ {name:'Lagoa Vermelha',codes:['687-AF-47','687-AF-20','687-AF-52'],due:'2026-11-20'},
+ {name:'Vila Angélica',codes:['687-AF-66'],due:'2026-11-23'},
+ {name:'São Bento / Vaz / Centro',codes:['764-AF-109','764-AF-111','764-AF-113','764-AF-93','764-AF-97','764-AF-98'],due:'2026-12-11'},
+ {name:'Gramado',codes:['687-AF-403'],due:'2027-01-15'}
+] as const;
+const scheduleStart='2026-09-30',scheduleEnd='2027-01-15';
+const dateOffset=(value:string)=>(Date.parse(value+'T12:00:00Z')-Date.parse(scheduleStart+'T12:00:00Z'))/(Date.parse(scheduleEnd+'T12:00:00Z')-Date.parse(scheduleStart+'T12:00:00Z'));
+const chartX=(day:string)=>36+Math.max(0,Math.min(1,dateOffset(day)))*338;
+const chartY=(n:number)=>135-Math.max(0,Math.min(staticSchedule.length,n))/staticSchedule.length*112;
+const stepPath=(points:{date:string;count:number}[],end:string)=>{
+ let result='M '+chartX(scheduleStart)+' '+chartY(0);
+ for(const point of points)result+=' H '+chartX(point.date)+' V '+chartY(point.count);
+ return result+' H '+chartX(end);
+};
+const projectCode=(name:string)=>{
+ const match=name.match(/(?:^|\\s)(\\d{3}[-_](?:AF|AR)[-_]\\d+N?)(?=\\s|·|$)/i);
+ return match?.[1]?.replaceAll('_','-').toUpperCase()??'';
+};
 const releasedStatus=(v:string)=>v==='NO_OBJECTION'||v==='NO_OBJECTION_RESERVATIONS';
 
 function PanelTitle({icon:Icon,title,action}:{icon:typeof Target,title:string,action?:React.ReactNode}){
@@ -73,6 +96,7 @@ export default function Dashboard(){
  const [annualTargets,setAnnualTargets]=useState<{year:number;total:number}[]>([]);
  const [attack2026,setAttack2026]=useState<{economies:number;stains:number}|null>(null);
  const [staticDelivery,setStaticDelivery]=useState<{date:string;count:number}[]|null>(null);
+ const [staticMissing,setStaticMissing]=useState<string[]>([]);
  useEffect(()=>{
   let active=true;
   void (async()=>{
@@ -92,29 +116,35 @@ export default function Dashboard(){
 
    const projectResult=await db.from('engineering_projects').select('id,project_name').eq('contract_id',result.contractId).eq('segment_type','SEWER').eq('active',true);
    if(active&&projectResult.data&&!projectResult.error){
-    const projects=projectResult.data.filter(p=>staticGroups.some(group=>group.some(code=>String(p.project_name).includes(code))));
-    if(projects.length){
-     const ids=projects.map(p=>String(p.id));
-     const [reviewResult,historyResult]=await Promise.all([
-      db.from('engineering_project_review_status').select('engineering_project_id,status,updated_at').in('engineering_project_id',ids),
-      db.from('engineering_project_review_history').select('engineering_project_id,new_status,changed_at').in('engineering_project_id',ids).order('changed_at',{ascending:true})
-     ]);
-     if(active&&reviewResult.data&&!reviewResult.error){
-      const byId=new Map(reviewResult.data.map(r=>[String(r.engineering_project_id),r]));
-      const dates:string[]=[];
-      for(const group of staticGroups){
-       const matching=group.map(code=>projects.find(p=>String(p.project_name).includes(code)));
-       if(matching.some(p=>!p))continue;
-       if(matching.some(p=>!releasedStatus(String(byId.get(String(p!.id))?.status??''))))continue;
-       const stamps=matching.map(p=>{
-        const events=(historyResult.data??[]).filter(h=>String(h.engineering_project_id)===String(p!.id)&&releasedStatus(String(h.new_status)));
-        return String(events[0]?.changed_at??byId.get(String(p!.id))?.updated_at??'');
-       });
-       if(stamps.every(Boolean))dates.push(stamps.sort().at(-1)!.slice(0,10));
-      }
-      setStaticDelivery(dates.sort().map((date,i)=>({date,count:i+1})));
+     const byCode=new Map<string,{id:string;project_name:string}[]>();
+     for(const row of projectResult.data){
+       const code=projectCode(String(row.project_name));
+       if(code)byCode.set(code,[...(byCode.get(code)??[]),row]);
      }
-    }
+     const missing=staticSchedule.filter(group=>group.codes.some(code=>(byCode.get(code)?.length??0)!==1)).map(group=>group.name);
+     setStaticMissing(missing);
+     const ids=Array.from(new Set(staticSchedule.flatMap(group=>group.codes.flatMap(code=>(byCode.get(code)??[]).map(row=>String(row.id))))));
+     if(ids.length){
+       const [reviewResult,historyResult]=await Promise.all([
+         db.from('engineering_project_review_status').select('engineering_project_id,status,updated_at').in('engineering_project_id',ids),
+         db.from('engineering_project_review_history').select('engineering_project_id,new_status,changed_at').in('engineering_project_id',ids).order('changed_at',{ascending:true})
+       ]);
+       if(active&&reviewResult.data&&!reviewResult.error&&!historyResult.error){
+         const statuses=new Map(reviewResult.data.map(row=>[String(row.engineering_project_id),row]));
+         const dates:string[]=[];
+         for(const group of staticSchedule){
+           const matches=group.codes.map(code=>byCode.get(code)?.[0]).filter(Boolean);
+           if(matches.length!==group.codes.length||group.codes.some(code=>(byCode.get(code)?.length??0)!==1))continue;
+           if(matches.some(row=>!releasedStatus(String(statuses.get(String(row!.id))?.status??''))))continue;
+           const stamps=matches.map(row=>{
+             const events=(historyResult.data??[]).filter(event=>String(event.engineering_project_id)===String(row!.id)&&releasedStatus(String(event.new_status)));
+             return String(events[0]?.changed_at??statuses.get(String(row!.id))?.updated_at??'');
+           });
+           if(stamps.every(Boolean))dates.push(stamps.sort().at(-1)!.slice(0,10));
+         }
+         setStaticDelivery(dates.sort().map((value,i)=>({date:value,count:i+1})));
+       }
+     }else setStaticDelivery([]);
    }
    if(!attack.error&&attack.data){const unique=new Set(attack.data.map(row=>String(row.stain_id)).filter(Boolean));setAttack2026({economies:attack.data.reduce((n,row)=>n+(Number.isFinite(Number(row.planned_economies))?Math.max(0,Number(row.planned_economies)):0),0),stains:unique.size});}
    if(!annual.error&&annual.data)setAnnualTargets(annual.data.map(row=>({year:Number(row.year),total:Number(row.target_economies)})));
@@ -144,6 +174,17 @@ export default function Dashboard(){
  const partialRelease=withoutEconomies>0||withoutNetwork>0;
  const releasedStains=stainState?(['WATER','SEWER'] as const).reduce((sum,system)=>sum+(stainState.counts[system].NO_OBJECTION??0)+(stainState.counts[system].NO_OBJECTION_RESERVATIONS??0),0):null;
  const totalStains=stainState?stainState.totals.WATER+stainState.totals.SEWER:null;
+ const todaySchedule=new Intl.DateTimeFormat('en-CA',{year:'numeric',month:'2-digit',day:'2-digit',timeZone:'America/Sao_Paulo'}).format(new Date());
+ const todayInChart=todaySchedule<scheduleStart?scheduleStart:todaySchedule>scheduleEnd?scheduleEnd:todaySchedule;
+ const plannedMilestones=staticSchedule
+   .map((group)=>group.due)
+   .filter((value,index,all)=>all.indexOf(value)===index)
+   .sort()
+   .map((value)=>({date:value,count:staticSchedule.filter(group=>group.due<=value).length}));
+ const plannedNow=staticSchedule.filter(group=>group.due<=todaySchedule).length;
+ const actualNow=staticDelivery===null?null:staticDelivery.filter(item=>item.date<=todaySchedule).length;
+ const adherence=plannedNow>0&&actualNow!==null?actualNow/plannedNow*100:null;
+ const showDate=(iso:string)=>iso.slice(8,10)+'/'+iso.slice(5,7)+(iso.slice(0,4)==='2027'?'/27':'');
  const annualGoal=(year:number)=>{const dbTotal=annualTargets.find(row=>row.year===year)?.total;return dbTotal&&dbTotal>0?dbTotal:officialAnnualTargets[year]??null};
  const annualTargetsSum=[2026,2027,2028].reduce((sum,year)=>sum+(annualGoal(year)??0),0);
  const annualTargetsMismatch=annualTargetsSum!==officialContractTotal;
@@ -193,7 +234,22 @@ export default function Dashboard(){
  <div className="va-plan-targets"><h3>METAS POR ANO</h3>{[2026,2027,2028].map(year=><div key={year}><span>{year}</span><b>{count(annualGoal(year))}</b></div>)}<div className="va-plan-total"><span>Total</span><b>{count(officialContractTotal)}</b></div>{annualTargetsMismatch&&<small>Revisar metas anuais cadastradas.</small>}</div>
 </div>
     </article>
-    <article className="va-card va-status"><PanelTitle icon={CheckCircle2} title="STATUS DAS MANCHAS POR SISTEMA" action={<Link className="va-inline-link" href="/engenharia#engenharia-classificacao">Atualizar status ↗</Link>}/><div className="va-status-grid"><StatusSystem system="Água" total={stainState?.totals.WATER??38} counts={stainState?.counts.WATER??null}/><StatusSystem system="Esgoto" total={stainState?.totals.SEWER??84} counts={stainState?.counts.SEWER??null}/></div><p className="va-notice-small">Uma mancha corresponde a um projeto por sistema: a classificação da Engenharia é refletida aqui. Projetos sem avaliação permanecem como não classificados.</p><div className="va-static-chart"><h3>CURVA S · ESTÁTICA ESGOTO</h3><div className="va-static-legend">Planejado <span style={{color:'#008681'}}>━━</span> · Em finalização <span style={{color:'#df8b24'}}>┄┄</span></div><svg viewBox="0 0 400 172" role="img" aria-label="Curva acumulada planejada suavizada: duas frentes em 16 de outubro, três em 23 de outubro e cinco em 30 de outubro. Duas frentes estão em finalização, sem conclusão formal registrada."><line x1="36" y1="135" x2="382" y2="135" stroke="#b9d3d0"/><line x1="36" y1="20" x2="36" y2="135" stroke="#b9d3d0"/><path d="M36 135 C78 135 105 116 142 90 S212 76 250 67 S335 29 374 20" fill="none" stroke="#008681" strokeWidth="3" strokeLinecap="round"/>{staticDelivery!==null&&staticDelivery.length>0&&<polyline points={['36,135',...staticDelivery.map(item=>{const t=(Date.parse(item.date+'T12:00:00')-Date.parse('2026-10-09T12:00:00'))/(Date.parse('2026-10-30T12:00:00')-Date.parse('2026-10-09T12:00:00'));return (36+Math.max(0,Math.min(1,t))*338)+','+(135-item.count*23)})].join(' ')} fill="none" stroke="#df8b24" strokeWidth="3" strokeDasharray="7 5" strokeLinecap="round" strokeLinejoin="round"/>}<path d="M36 135 C85 135 113 102 142 90 L208 90" fill="none" stroke="#df8b24" strokeWidth="3" strokeDasharray="7 5" strokeLinecap="round"/><circle cx="208" cy="90" r="5" fill="#fff" stroke="#df8b24" strokeWidth="3"/><circle cx="142" cy="90" r="4" fill="#008681"/><circle cx="250" cy="67" r="4" fill="#008681"/><circle cx="374" cy="20" r="4" fill="#008681"/><text x="27" y="139" textAnchor="end" fontSize="11">0</text><text x="27" y="93" textAnchor="end" fontSize="11">2</text><text x="27" y="70" textAnchor="end" fontSize="11">3</text><text x="27" y="24" textAnchor="end" fontSize="11">5</text><text x="142" y="157" textAnchor="middle" fontSize="11">16/10</text><text x="250" y="157" textAnchor="middle" fontSize="11">23/10</text><text x="374" y="157" textAnchor="middle" fontSize="11">30/10</text></svg><div className="va-static-foot"><span>Planejado em 20/10: <b>2 de 5</b></span><span>Em finalização: <b>2 de 5 (Ypê I e II)</b></span><span>Concluídas: <b>{staticDelivery===null?'em apuração':staticDelivery.length+' de 5'}</b></span></div><small>Ypê I e Ypê II em finalização, ainda não concluídos formalmente. A linha laranja tracejada indica andamento operacional informado (não é aprovação). Conclusões formais são consultadas automaticamente ao recarregar.</small></div></article>
+    <article className="va-card va-status"><PanelTitle icon={CheckCircle2} title="STATUS DAS MANCHAS POR SISTEMA" action={<Link className="va-inline-link" href="/engenharia#engenharia-classificacao">Atualizar status ↗</Link>}/><div className="va-status-grid"><StatusSystem system="Água" total={stainState?.totals.WATER??38} counts={stainState?.counts.WATER??null}/><StatusSystem system="Esgoto" total={stainState?.totals.SEWER??84} counts={stainState?.counts.SEWER??null}/></div><p className="va-notice-small">Uma mancha corresponde a um projeto por sistema: a classificação da Engenharia é refletida aqui. Projetos sem avaliação permanecem como não classificados.</p><div className="va-static-chart">
+ <h3>CURVA S · ESTÁTICA ESGOTO · REV. 0B</h3>
+ <div className="va-static-legend">Planejado <span style={{color:'#008681'}}>━━</span> · Aprovações formais <span style={{color:'#df8b24'}}>┄┄</span></div>
+ <svg viewBox="0 0 400 172" role="img" aria-label={'Cronograma revisão 0B: '+plannedNow+' de 7 frentes previstas até hoje; '+(actualNow===null?'aprovações em apuração':actualNow+' formalmente liberadas')+'.'}>
+  <line x1="36" y1="135" x2="382" y2="135" stroke="#b9d3d0"/><line x1="36" y1="20" x2="36" y2="135" stroke="#b9d3d0"/>
+  {[0,1,3,5,7].map(n=><g key={n}><line x1="36" x2="374" y1={chartY(n)} y2={chartY(n)} stroke="#e5eeec" strokeDasharray="2 4"/><text x="26" y={chartY(n)+4} textAnchor="end" fontSize="10">{n}</text></g>)}
+  <path d={stepPath(plannedMilestones,scheduleEnd)} fill="none" stroke="#008681" strokeWidth="3" strokeLinejoin="round"/>
+  {plannedMilestones.map(point=><circle key={point.date} cx={chartX(point.date)} cy={chartY(point.count)} r="3.7" fill="#008681"/>)}
+  {staticDelivery!==null&&<><path d={stepPath(staticDelivery.filter(item=>item.date<=todayInChart),todayInChart)} fill="none" stroke="#df8b24" strokeWidth="3" strokeDasharray="7 5" strokeLinejoin="round"/><circle cx={chartX(todayInChart)} cy={chartY(actualNow??0)} r="4" fill="#fff" stroke="#df8b24" strokeWidth="2.5"/></>}
+  <line x1={chartX(todayInChart)} x2={chartX(todayInChart)} y1="20" y2="135" stroke="#7c9290" strokeDasharray="3 4" strokeWidth="1.2"/>
+  {['2026-10-02','2026-11-13','2026-12-11','2027-01-15'].map(value=><text key={value} x={chartX(value)} y="157" textAnchor="middle" fontSize="9">{showDate(value)}</text>)}
+ </svg>
+ <div className="va-static-foot"><span>Previsto até {showDate(todaySchedule)}: <b>{plannedNow} de 7</b></span><span>Liberado: <b>{actualNow===null?'em apuração':actualNow+' de 7'}</b></span><span>Aderência: <b>{adherence===null?'a apurar':percentage(adherence)}</b></span><span>Desvio: <b>{actualNow===null?'—':(actualNow-plannedNow)+' frente(s)'}</b></span></div>
+ <small>Fonte: E2786-00-CR-GR-001, revisão 0B. Linha verde = término previsto das sete frentes; laranja = projetos com “Sem objeção” ou “Sem objeção com ressalvas” formalmente registrados. A comparação é conservadora: término de projeto e aprovação formal são marcos diferentes; “em finalização” não equivale a aprovação.</small>
+ <details><summary>Ver marcos previstos das 7 frentes</summary><div className="va-static-foot">{staticSchedule.map(group=><span key={group.name}>{group.name}: <b>{showDate(group.due)}</b></span>)}</div>{staticMissing.length>0&&<small>Sem vínculo cadastral completo: {staticMissing.join(', ')}.</small>}</details>
+ </div></article>
    </section>
    <section className="va-bottom-grid">
     <article className="va-card"><PanelTitle icon={FileCheck2} title="ENTREGA DA ENGENHARIA"/><p className="va-notice-small"><b>{release?.projects??'—'} projetos liberados</b>{partialRelease?' · Quantitativos parciais':' · Quantitativos informados'}</p><div className="va-two-metrics"><Mini label={'Economias liberadas'+(withoutEconomies?' · parcial':'')} value={count(releasedEconomies)} context={'Água '+count(release?.water.economies.value??null)+' · Esgoto '+count(release?.sewer.economies.value??null)}/><Mini label={'Rede liberada'+(withoutNetwork?' · parcial':'')} value={km(releasedNetwork)} context={'Água '+km(release?.water.network.value??null)+' · Esgoto '+km(release?.sewer.network.value??null)}/></div>{partialRelease&&<p className="va-notice-small">Pendências: {withoutEconomies} sem economias · {withoutNetwork} sem metragem. Consulte os projetos em Engenharia.</p>}<Link className="va-card-action" href="/engenharia">Detalhar Engenharia ↗</Link></article>
