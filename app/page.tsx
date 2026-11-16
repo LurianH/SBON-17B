@@ -143,7 +143,7 @@ export default function Dashboard(){
     db.from('gis_stain_system_effective').select('segment_type,effective_status').eq('contract_id',result.contractId),
     db.from('annual_targets').select('year,target_economies').eq('contract_id',result.contractId).gte('year',2026).lte('year',2028).order('year'),
     db.from('engineering_attack_plan_2026').select('stain_id,planned_economies'),
-    db.from('engineering_source_snapshot').select('segment_type,monday_economies,monday_network_m,master_front,monday_project_status,network_document_status').eq('contract_id',result.contractId)
+    db.from('engineering_source_snapshot').select('segment_type,monday_economies,monday_network_m,fallback_network_m,master_front,monday_project_status,network_document_status').eq('contract_id',result.contractId)
    ]);
    if(!active)return;
 
@@ -184,8 +184,8 @@ export default function Dashboard(){
     for(const r of sources.data){if(r.monday_project_status==='Cancelado')continue;if(r.master_front)next.matched++;
       if(r.network_document_status!=='NO_OBJECTION'&&r.network_document_status!=='UNDER_SABESP_REVIEW')continue;
       const group=r.segment_type==='WATER'?next.water:next.sewer;
-      group.count++;group.economies+=Number(r.monday_economies??0);group.meters+=Number(r.monday_network_m??0);
-      if(r.monday_network_m==null)group.missing++;
+      group.count++;group.economies+=Number(r.monday_economies??0);group.meters+=Number(r.monday_network_m??r.fallback_network_m??0);
+      if(r.monday_network_m==null&&r.fallback_network_m==null)group.missing++;
     }
     setSourceTotals(next);
    }
@@ -250,7 +250,7 @@ export default function Dashboard(){
       <div style={{flex:'1 1 185px'}}><small>ESGOTO · {sourceTotals.sewer.count} redes elegíveis</small><div><strong style={{fontSize:23}}>{count(sourceTotals.sewer.meters,2)} m</strong></div><small>{count(sourceTotals.sewer.economies)} economias vinculadas · {sourceTotals.sewer.missing} sem metragem</small></div>
       <div style={{flex:'1 1 185px'}}><small>TOTAL DE REDE CONSIDERADA</small><div><strong style={{fontSize:23}}>{count(sourceTotals.water.meters+sourceTotals.sewer.meters,2)} m</strong></div><small>Apenas Sem objeção ou Em análise SABESP; {sourceTotals.water.missing+sourceTotals.sewer.missing} frentes elegíveis sem metragem</small></div>
     </div>
-    <p className="va-notice-small" style={{marginTop:10,marginBottom:0}}>A soma considera apenas redes com documentos “Sem objeção” ou “Em análise SABESP” na Lista Mestra, usando metragens do Monday; não representa aprovação integral nem execução. O histórico anterior permanece separado.</p>
+    <p className="va-notice-small" style={{marginTop:10,marginBottom:0}}>A soma considera somente redes com documentos “Sem objeção” ou “Em análise SABESP” na Lista Mestra. Usa metragens do Monday e, onde ausentes, valores anteriores identificados e sujeitos a confirmação; não representa aprovação integral nem execução. O histórico anterior permanece separado.</p>
    </section>}
    <section className="va-center-grid">
     <article className="va-card va-goals va-goals-rev">
