@@ -69,7 +69,7 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
   ];
   return <div className="engineering">
     <EngineeringSourceReconciliation rows={sourceRows}/>
-    <div id="engenharia-aprovacoes"><EngineeringManagementOverview projects={visible} reviews={reviewRows}/></div>
+    <details style={{margin:"0 0 16px"}}><summary style={{cursor:"pointer",fontWeight:700,padding:"8px 0"}}>Consultar indicadores históricos de aprovações (a conciliar com a Lista Mestra)</summary><div id="engenharia-aprovacoes"><EngineeringManagementOverview projects={visible} reviews={reviewRows}/></div></details>
     <EngineeringAnnualTargets contractId={contractId}/>
     <div className="engineering-toolbar"><p>Projetos cadastrados por mancha e sistema, com situação gerencial</p><div>{role !== 'DIRETORIA' && <button onClick={() => setDirector(!director)}>{director ? 'Sair do Modo Diretoria' : 'Modo Diretoria'}</button>}</div></div>
     {notice && <p role="alert" className="engineering-notice">{notice}</p>}
