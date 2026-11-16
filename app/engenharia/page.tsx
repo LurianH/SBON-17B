@@ -87,7 +87,7 @@ export default async function EngineeringPage() {
   let sourceRows:EngineeringSourceRow[]=[];
   if(contract&&!notice){
     for(let offset=0;;offset+=500){
-      const source=await db.from('engineering_source_snapshot').select('id,segment_type,municipality,gis_code,neighborhood,monday_economies,monday_network_m,monday_project_status,master_front,master_document_status,network_document_status,master_reference_code,source_version').eq('contract_id',contract.id).order('id').range(offset,offset+499);
+      const source=await db.from('engineering_source_snapshot').select('id,segment_type,municipality,gis_code,neighborhood,monday_economies,monday_network_m,fallback_network_m,fallback_network_source,monday_project_status,master_front,master_document_status,network_document_status,master_reference_code,source_version').eq('contract_id',contract.id).order('id').range(offset,offset+499);
       if(source.error){notice='Não foi possível carregar a conciliação Lista Mestra / Monday.';break;}
       sourceRows.push(...(source.data??[]) as EngineeringSourceRow[]);
       if((source.data??[]).length<500)break;
