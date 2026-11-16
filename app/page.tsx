@@ -122,6 +122,7 @@ function Deviation({data}:{data:DashboardData}){
 function Mini({label,value,context}:{label:string,value:string,context?:string}){return <div className="va-mini"><span>{label}</span><strong>{value}</strong>{context&&<small>{context}</small>}</div>}
 export default function Dashboard(){
  const [data,setData]=useState<DashboardData|null>(null);
+ const [sourceTotals,setSourceTotals]=useState<{water:{count:number,economies:number,meters:number};sewer:{count:number,economies:number,meters:number};matched:number}|null>(null);
  const [structures,setStructures]=useState<Structures|null>(null);
  const [stainState,setStainState]=useState<StainState|null>(null);
  const [annualTargets,setAnnualTargets]=useState<{year:number;total:number}[]>([]);
@@ -136,12 +137,13 @@ export default function Dashboard(){
    setData(result);
    if(!result.contractId||result.source!=='supabase')return;
    const db=createClient();if(!db)return;
-   const [works,targets,stains,annual,attack]=await Promise.all([
+   const [works,targets,stains,annual,attack,sources]=await Promise.all([
     db.from('engineering_localized_works').select('kind,quantity').eq('contract_id',result.contractId).eq('active',true),
     db.from('contract_stain_targets').select('segment_type,total_count').eq('contract_id',result.contractId),
     db.from('gis_stain_system_effective').select('segment_type,effective_status').eq('contract_id',result.contractId),
     db.from('annual_targets').select('year,target_economies').eq('contract_id',result.contractId).gte('year',2026).lte('year',2028).order('year'),
-    db.from('engineering_attack_plan_2026').select('stain_id,planned_economies')
+    db.from('engineering_attack_plan_2026').select('stain_id,planned_economies'),
+    db.from('engineering_source_snapshot').select('segment_type,monday_economies,monday_network_m,master_front').eq('contract_id',result.contractId)
    ]);
    if(!active)return;
 
@@ -176,6 +178,14 @@ export default function Dashboard(){
          setStaticDelivery(dates.sort().map((value,i)=>({date:value,count:i+1})));
        }
      }else setStaticDelivery([]);
+   }
+   if(!sources.error&&sources.data){
+    const next={water:{count:0,economies:0,meters:0},sewer:{count:0,economies:0,meters:0},matched:0};
+    for(const r of sources.data){const group=r.segment_type==='WATER'?next.water:next.sewer;
+      group.count++;group.economies+=Number(r.monday_economies??0);group.meters+=Number(r.monday_network_m??0);
+      if(r.master_front)next.matched++;
+    }
+    setSourceTotals(next);
    }
    if(!attack.error&&attack.data){const unique=new Set(attack.data.map(row=>String(row.stain_id)).filter(Boolean));setAttack2026({economies:attack.data.reduce((n,row)=>n+(Number.isFinite(Number(row.planned_economies))?Math.max(0,Number(row.planned_economies)):0),0),stains:unique.size});}
    if(!annual.error&&annual.data)setAnnualTargets(annual.data.map(row=>({year:Number(row.year),total:Number(row.target_economies)})));
@@ -231,6 +241,15 @@ export default function Dashboard(){
     <Kpi icon={Target} title={'META '+data.targetYear} value={currentYearGoal===null?'Em apuração':count(currentYearGoal)+' economias'} note={systemTotalsMismatch?'Divergência no cadastro por sistema: Água '+count(targetWater)+' + Esgoto '+count(targetSewer):'Água '+count(targetWater)+' · Esgoto '+count(targetSewer)}/>
     <article className="va-card va-projection"><PanelTitle icon={TrendingUp} title="PROJEÇÃO ANUAL"/><div className="va-projection-inner"><div className="va-half-gauge" style={{'--gauge':projectedWidth/2+'%'} as React.CSSProperties}><div><b>{percentage(projected)}</b><small>{projected===null?'Em apuração':'da meta anual'}</small></div></div><p>{projected!==null?'Projeção calculada pela produtividade observada, normalizada por dias de acompanhamento.':data.executed===0&&data.networkExecuted!==null&&data.networkExecuted>0?'Rede executada: '+count(data.networkExecuted,3)+' m. Ainda são 0 economias executadas; não há produtividade de economias para extrapolar a meta anual.':'Projeção aguardando pelo menos três registros ao longo de 14 dias, com avanço positivo e consistente de economias executadas.'}</p></div></article>
    </section>
+   {sourceTotals&&<section className="va-card" style={{padding:'18px 22px',marginBottom:16}} aria-label="Base atual de projetos">
+    <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap'}}><h2 style={{margin:0,fontSize:17}}>BASE DE PROJETOS · LISTA MESTRA + MONDAY</h2><Link className="va-inline-link" href="/engenharia">Conferir projetos e documentos ↗</Link></div>
+    <div style={{display:'flex',gap:18,flexWrap:'wrap',marginTop:12}}>
+      <div style={{flex:'1 1 185px'}}><small>ÁGUA · {sourceTotals.water.count} projetos</small><div><strong style={{fontSize:23}}>{count(sourceTotals.water.economies)} economias</strong></div><small>{count(sourceTotals.water.meters,2)} m informados no Monday</small></div>
+      <div style={{flex:'1 1 185px'}}><small>ESGOTO · {sourceTotals.sewer.count} projetos</small><div><strong style={{fontSize:23}}>{count(sourceTotals.sewer.economies)} economias</strong></div><small>{count(sourceTotals.sewer.meters,2)} m informados no Monday</small></div>
+      <div style={{flex:'1 1 185px'}}><small>STATUS DOCUMENTAL</small><div><strong style={{fontSize:23}}>{sourceTotals.matched} / {sourceTotals.water.count+sourceTotals.sewer.count}</strong></div><small>Frentes vinculadas à Lista Mestra; demais exigem conciliação cadastral</small></div>
+    </div>
+    <p className="va-notice-small" style={{marginTop:10,marginBottom:0}}>Quantitativos de projeto do Monday, não economias liberadas ou executadas. Status de cada documento conforme Lista Mestra; os indicadores históricos de aprovação abaixo permanecem separados.</p>
+   </section>}
    <section className="va-center-grid">
     <article className="va-card va-goals va-goals-rev">
      <PanelTitle icon={Target} title="METAS DO CONTRATO"/>
