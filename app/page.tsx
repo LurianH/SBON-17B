@@ -122,7 +122,7 @@ function Deviation({data}:{data:DashboardData}){
 function Mini({label,value,context}:{label:string,value:string,context?:string}){return <div className="va-mini"><span>{label}</span><strong>{value}</strong>{context&&<small>{context}</small>}</div>}
 export default function Dashboard(){
  const [data,setData]=useState<DashboardData|null>(null);
- const [sourceTotals,setSourceTotals]=useState<{water:{count:number,economies:number,meters:number};sewer:{count:number,economies:number,meters:number};matched:number}|null>(null);
+ const [sourceTotals,setSourceTotals]=useState<{water:{count:number,economies:number,meters:number,missing:number};sewer:{count:number,economies:number,meters:number,missing:number};matched:number}|null>(null);
  const [structures,setStructures]=useState<Structures|null>(null);
  const [stainState,setStainState]=useState<StainState|null>(null);
  const [annualTargets,setAnnualTargets]=useState<{year:number;total:number}[]>([]);
@@ -143,7 +143,7 @@ export default function Dashboard(){
     db.from('gis_stain_system_effective').select('segment_type,effective_status').eq('contract_id',result.contractId),
     db.from('annual_targets').select('year,target_economies').eq('contract_id',result.contractId).gte('year',2026).lte('year',2028).order('year'),
     db.from('engineering_attack_plan_2026').select('stain_id,planned_economies'),
-    db.from('engineering_source_snapshot').select('segment_type,monday_economies,monday_network_m,master_front,monday_project_status').eq('contract_id',result.contractId)
+    db.from('engineering_source_snapshot').select('segment_type,monday_economies,monday_network_m,master_front,monday_project_status,network_document_status').eq('contract_id',result.contractId)
    ]);
    if(!active)return;
 
@@ -180,10 +180,12 @@ export default function Dashboard(){
      }else setStaticDelivery([]);
    }
    if(!sources.error&&sources.data){
-    const next={water:{count:0,economies:0,meters:0},sewer:{count:0,economies:0,meters:0},matched:0};
-    for(const r of sources.data){if(r.monday_project_status==='Cancelado')continue;const group=r.segment_type==='WATER'?next.water:next.sewer;
+    const next={water:{count:0,economies:0,meters:0,missing:0},sewer:{count:0,economies:0,meters:0,missing:0},matched:0};
+    for(const r of sources.data){if(r.monday_project_status==='Cancelado')continue;if(r.master_front)next.matched++;
+      if(r.network_document_status!=='NO_OBJECTION'&&r.network_document_status!=='UNDER_SABESP_REVIEW')continue;
+      const group=r.segment_type==='WATER'?next.water:next.sewer;
       group.count++;group.economies+=Number(r.monday_economies??0);group.meters+=Number(r.monday_network_m??0);
-      if(r.master_front)next.matched++;
+      if(r.monday_network_m==null)group.missing++;
     }
     setSourceTotals(next);
    }
@@ -244,11 +246,11 @@ export default function Dashboard(){
    {sourceTotals&&<section className="va-card" style={{padding:'18px 22px',marginBottom:16}} aria-label="Base atual de projetos">
     <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap'}}><h2 style={{margin:0,fontSize:17}}>BASE DE PROJETOS · LISTA MESTRA + MONDAY</h2><Link className="va-inline-link" href="/engenharia">Conferir projetos e documentos ↗</Link></div>
     <div style={{display:'flex',gap:18,flexWrap:'wrap',marginTop:12}}>
-      <div style={{flex:'1 1 185px'}}><small>ÁGUA · {sourceTotals.water.count} projetos</small><div><strong style={{fontSize:23}}>{count(sourceTotals.water.economies)} economias</strong></div><small>{count(sourceTotals.water.meters,2)} m informados no Monday</small></div>
-      <div style={{flex:'1 1 185px'}}><small>ESGOTO · {sourceTotals.sewer.count} projetos</small><div><strong style={{fontSize:23}}>{count(sourceTotals.sewer.economies)} economias</strong></div><small>{count(sourceTotals.sewer.meters,2)} m informados no Monday</small></div>
-      <div style={{flex:'1 1 185px'}}><small>STATUS DOCUMENTAL</small><div><strong style={{fontSize:23}}>{sourceTotals.matched} / {sourceTotals.water.count+sourceTotals.sewer.count}</strong></div><small>Frentes vinculadas à Lista Mestra; demais exigem conciliação cadastral</small></div>
+      <div style={{flex:'1 1 185px'}}><small>ÁGUA · {sourceTotals.water.count} redes elegíveis</small><div><strong style={{fontSize:23}}>{count(sourceTotals.water.meters,2)} m</strong></div><small>{count(sourceTotals.water.economies)} economias vinculadas · {sourceTotals.water.missing} sem metragem</small></div>
+      <div style={{flex:'1 1 185px'}}><small>ESGOTO · {sourceTotals.sewer.count} redes elegíveis</small><div><strong style={{fontSize:23}}>{count(sourceTotals.sewer.meters,2)} m</strong></div><small>{count(sourceTotals.sewer.economies)} economias vinculadas · {sourceTotals.sewer.missing} sem metragem</small></div>
+      <div style={{flex:'1 1 185px'}}><small>TOTAL DE REDE CONSIDERADA</small><div><strong style={{fontSize:23}}>{count(sourceTotals.water.meters+sourceTotals.sewer.meters,2)} m</strong></div><small>Apenas Sem objeção ou Em análise SABESP; {sourceTotals.water.missing+sourceTotals.sewer.missing} frentes elegíveis sem metragem</small></div>
     </div>
-    <p className="va-notice-small" style={{marginTop:10,marginBottom:0}}>Quantitativos de projeto do Monday, não economias liberadas ou executadas. Status de cada documento conforme Lista Mestra; os indicadores históricos de aprovação abaixo permanecem separados.</p>
+    <p className="va-notice-small" style={{marginTop:10,marginBottom:0}}>A soma considera apenas redes com documentos “Sem objeção” ou “Em análise SABESP” na Lista Mestra, usando metragens do Monday; não representa aprovação integral nem execução. O histórico anterior permanece separado.</p>
    </section>}
    <section className="va-center-grid">
     <article className="va-card va-goals va-goals-rev">
