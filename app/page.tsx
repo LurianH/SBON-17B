@@ -143,7 +143,7 @@ export default function Dashboard(){
     db.from('gis_stain_system_effective').select('segment_type,effective_status').eq('contract_id',result.contractId),
     db.from('annual_targets').select('year,target_economies').eq('contract_id',result.contractId).gte('year',2026).lte('year',2028).order('year'),
     db.from('engineering_attack_plan_2026').select('stain_id,planned_economies'),
-    db.from('engineering_source_snapshot').select('segment_type,monday_economies,monday_network_m,master_front').eq('contract_id',result.contractId)
+    db.from('engineering_source_snapshot').select('segment_type,monday_economies,monday_network_m,master_front,monday_project_status').eq('contract_id',result.contractId)
    ]);
    if(!active)return;
 
@@ -181,7 +181,7 @@ export default function Dashboard(){
    }
    if(!sources.error&&sources.data){
     const next={water:{count:0,economies:0,meters:0},sewer:{count:0,economies:0,meters:0},matched:0};
-    for(const r of sources.data){const group=r.segment_type==='WATER'?next.water:next.sewer;
+    for(const r of sources.data){if(r.monday_project_status==='Cancelado')continue;const group=r.segment_type==='WATER'?next.water:next.sewer;
       group.count++;group.economies+=Number(r.monday_economies??0);group.meters+=Number(r.monday_network_m??0);
       if(r.master_front)next.matched++;
     }
