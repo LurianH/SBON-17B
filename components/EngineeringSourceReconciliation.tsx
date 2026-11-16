@@ -3,7 +3,7 @@ import {useMemo,useState} from 'react';
 
 export type EngineeringSourceRow={
  id:number;segment_type:'WATER'|'SEWER';municipality:string;gis_code:string;neighborhood:string;
- monday_economies:number|null;monday_network_m:number|string|null;master_front:string|null;
+ monday_economies:number|null;monday_network_m:number|string|null;monday_project_status:string|null;master_front:string|null;
  master_document_status:string|null;master_reference_code:string|null;source_version:string;
 };
 const num=(x:number|null|undefined,unit='')=>x==null?'Não informado':new Intl.NumberFormat('pt-BR',{maximumFractionDigits:3}).format(x)+unit;
@@ -12,7 +12,7 @@ export function EngineeringSourceReconciliation({rows}:{rows:EngineeringSourceRo
  const cityOptions=useMemo(()=>[...new Set(rows.map(r=>r.municipality))].sort(),[rows]);
  const matched=useMemo(()=>rows.filter(r=>(!city||r.municipality===city)&&(segment==='ALL'||r.segment_type===segment)&&
  [r.gis_code,r.neighborhood,r.municipality,r.master_front??''].join(' ').toLocaleLowerCase('pt-BR').includes(term.toLocaleLowerCase('pt-BR'))),[rows,city,segment,term]);
- const totals=(segmentType:'WATER'|'SEWER')=>matched.filter(r=>r.segment_type===segmentType).reduce((a,r)=>({economies:a.economies+(r.monday_economies??0),meters:a.meters+(r.monday_network_m==null?0:Number(r.monday_network_m)),withNetwork:a.withNetwork+(r.monday_network_m!=null?1:0)}),{economies:0,meters:0,withNetwork:0});
+ const totals=(segmentType:'WATER'|'SEWER')=>matched.filter(r=>r.segment_type===segmentType&&r.monday_project_status!=='Cancelado').reduce((a,r)=>({economies:a.economies+(r.monday_economies??0),meters:a.meters+(r.monday_network_m==null?0:Number(r.monday_network_m)),withNetwork:a.withNetwork+(r.monday_network_m!=null?1:0)}),{economies:0,meters:0,withNetwork:0});
  const water=totals('WATER'),sewer=totals('SEWER');
  return <section className="panel" aria-label="Conciliação Lista Mestra e Monday" style={{padding:20,marginBottom:18}}>
   <div style={{display:'flex',gap:12,justifyContent:'space-between',alignItems:'start',flexWrap:'wrap'}}>
@@ -31,9 +31,9 @@ export function EngineeringSourceReconciliation({rows}:{rows:EngineeringSourceRo
   <div style={{overflowX:'auto'}}>
   <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
    <thead><tr style={{borderBottom:'2px solid currentColor',textAlign:'left'}}><th style={{padding:8}}>Mancha / frente</th><th style={{padding:8}}>Bairro</th><th style={{padding:8}}>Sistema</th><th style={{padding:8,textAlign:'right'}}>Economias Monday</th><th style={{padding:8,textAlign:'right'}}>Rede Monday (m)</th><th style={{padding:8}}>Status documental · Lista Mestra</th></tr></thead>
-   <tbody>{matched.map(r=><tr key={r.id} style={{borderBottom:'1px solid #cbd5e1'}}><td style={{padding:8,whiteSpace:'nowrap'}}><b>{r.gis_code}</b><div style={{fontSize:11,opacity:.8}}>{r.municipality} · {r.master_front??'Frente não conciliada'}</div>{r.master_reference_code&&r.master_reference_code!==r.gis_code&&<div style={{fontSize:11,color:'#b45309',fontWeight:700}}>Atenção: Lista Mestra usa {r.master_reference_code}</div>}</td><td style={{padding:8}}>{r.neighborhood}</td><td style={{padding:8}}>{r.segment_type==='WATER'?'Água':'Esgoto'}</td><td style={{padding:8,textAlign:'right',fontVariantNumeric:'tabular-nums'}}>{num(r.monday_economies)}</td><td style={{padding:8,textAlign:'right',fontVariantNumeric:'tabular-nums'}}>{num(r.monday_network_m==null?null:Number(r.monday_network_m))}</td><td style={{padding:8,maxWidth:300}}>{r.master_document_status?<span>{r.master_document_status}</span>:<span style={{opacity:.7}}>Correspondência documental não confirmada</span>}</td></tr>)}</tbody>
+   <tbody>{matched.map(r=><tr key={r.id} style={{borderBottom:'1px solid #cbd5e1'}}><td style={{padding:8,whiteSpace:'nowrap'}}><b>{r.gis_code}</b><div style={{fontSize:11,opacity:.8}}>{r.municipality} · {r.master_front??'Frente não conciliada'}</div>{r.master_reference_code&&r.master_reference_code!==r.gis_code&&<div style={{fontSize:11,color:'#b45309',fontWeight:700}}>Atenção: Lista Mestra usa {r.master_reference_code}</div>}</td><td style={{padding:8}}>{r.neighborhood}<div style={{fontSize:11,opacity:.78}}>Monday: {r.monday_project_status??'Não informado'}</div></td><td style={{padding:8}}>{r.segment_type==='WATER'?'Água':'Esgoto'}</td><td style={{padding:8,textAlign:'right',fontVariantNumeric:'tabular-nums'}}>{num(r.monday_economies)}</td><td style={{padding:8,textAlign:'right',fontVariantNumeric:'tabular-nums'}}>{num(r.monday_network_m==null?null:Number(r.monday_network_m))}</td><td style={{padding:8,maxWidth:300}}>{r.master_document_status?<span>{r.master_document_status}</span>:<span style={{opacity:.7}}>Correspondência documental não confirmada</span>}</td></tr>)}</tbody>
   </table>
   </div>
-  <p style={{fontSize:12,margin:'12px 0 0'}}>Os totais acima são <b>quantitativos cadastrados no Monday</b>, não economias formalmente liberadas, aprovadas ou executadas. Metragem ausente permanece “Não informado”. Abaixo, os quadros históricos de aprovação e execução seguem separados para não alterar medições já registradas.</p>
+  <p style={{fontSize:12,margin:'12px 0 0'}}>Os totais acima são <b>quantitativos cadastrados no Monday</b> de frentes não canceladas, não economias formalmente liberadas, aprovadas ou executadas. Metragem ausente permanece “Não informado”. Abaixo, os quadros históricos de aprovação e execução seguem separados para não alterar medições já registradas.</p>
  </section>;
 }
