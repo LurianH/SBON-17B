@@ -16,8 +16,6 @@ const percentage=(v:number|null)=>v===null?'—':count(v,1)+'%';
 const ratio=(numerator:number|null,denominator:number|null)=>numerator===null||denominator===null||denominator<=0?null:numerator/denominator*100;
 // Mostra o valor conhecido mesmo quando outra frente liberada ainda não tem quantitativos.
 // A origem gerencial segue exigindo o total completo para cálculos de desvio.
-const knownReleased=(water:number|null,sewer:number|null)=>
- water===null&&sewer===null?null:(water??0)+(sewer??0);
 const date=(v:string|null)=>v?new Intl.DateTimeFormat('pt-BR').format(new Date(v+'T12:00:00')):'Aguardando atualização';
 const absence='Ainda não informado';
 // Recorte contratual confirmado pela fiscalização; não representa execução realizada.
@@ -209,17 +207,8 @@ export default function Dashboard(){
  if(!data)return <div className="va-loading">Carregando painel gerencial Vitalux…</div>;
  // Desagregação contratual confirmada apenas para 2026; não inferir sistemas de outros anos.
  const targetWater=data.targetBreakdown?.water??(data.targetYear===2026?352:null),targetSewer=data.targetBreakdown?.sewer??(data.targetYear===2026?1357:null);
- const release=data.releaseSummary;
  const consideredEconomies=sourceTotals?sourceTotals.water.economies+sourceTotals.sewer.economies:null;
  const consideredWater=sourceTotals?.water.economies??null,consideredSewer=sourceTotals?.sewer.economies??null;
- const consideredNetwork=sourceTotals?sourceTotals.water.meters+sourceTotals.sewer.meters:null;
- const consideredProjects=sourceTotals?sourceTotals.water.count+sourceTotals.sewer.count:null;
- const withoutSourceEconomies=sourceTotals?sourceTotals.water.missing+sourceTotals.sewer.missing:0;
- const releasedEconomies=consideredEconomies;
- const releasedNetwork=release?knownReleased(release.water.network.value,release.sewer.network.value):null;
- const withoutEconomies=release?release.water.economies.missing+release.sewer.economies.missing:0;
- const withoutNetwork=release?release.water.network.missing+release.sewer.network.missing:0;
- const partialRelease=withoutEconomies>0||withoutNetwork>0;
  const releasedStains=stainState?(['WATER','SEWER'] as const).reduce((sum,system)=>sum+(stainState.counts[system].NO_OBJECTION??0)+(stainState.counts[system].NO_OBJECTION_RESERVATIONS??0),0):null;
  const totalStains=stainState?stainState.totals.WATER+stainState.totals.SEWER:null;
  const todaySchedule=new Intl.DateTimeFormat('en-CA',{year:'numeric',month:'2-digit',day:'2-digit',timeZone:'America/Sao_Paulo'}).format(new Date());
@@ -266,24 +255,24 @@ export default function Dashboard(){
   <b>Engenharia <small>· projetos considerados na cobertura</small></b>
   <div className="va-exec-milestones va-engineering-milestones">
    <div><strong>Início</strong><span className="va-lane-point"/><small>20/07/2026</small></div>
-   <div><strong>{count(releasedEconomies)}</strong><span className="va-lane-point va-point-current"/><small>Consideradas · análise e sem objeção</small></div>
+   <div><strong>{count(consideredEconomies)}</strong><span className="va-lane-point va-point-current"/><small>Consideradas · análise e sem objeção</small></div>
    <div><strong>1.709</strong><span className="va-lane-point"/><small>Dez/2026</small></div>
    <div><strong>14.421</strong><span className="va-lane-point"/><small>Mai/2027</small></div>
   </div>
  </div>
  <div className="va-exec-kpis">
   <div><small>EXECUÇÃO {data.targetYear}</small><b>{count(data.executed)} / {count(currentYearGoal)}</b><span>Avanço físico</span></div>
-  <div><small>COBERTURA PROJETOS DEZ/2026</small><b>{count(releasedEconomies)} / 1.709</b><span>Cobertura da Engenharia</span></div>
-  <div><small>COBERTURA PROJETOS MAI/2027</small><b>{count(releasedEconomies)} / 14.421</b><span>Prazo final</span></div>
+  <div><small>COBERTURA PROJETOS DEZ/2026</small><b>{count(consideredEconomies)} / 1.709</b><span>Cobertura da Engenharia</span></div>
+  <div><small>COBERTURA PROJETOS MAI/2027</small><b>{count(consideredEconomies)} / 14.421</b><span>Prazo final</span></div>
  </div>
 </div>
 </div>
 <div className="va-plan-lower va-plan-lower-executive">
- <div className="va-plan-assessment"><h3>COBERTURA DOS PROJETOS POR ANO</h3><small>Base de projetos considerados na Lista Mestra/Monday</small><div className="va-plan-years">{[2026,2027,2028].map(year=>{const base=annualGoal(year);const known=year===2026?releasedEconomies:null;const pct=base!==null&&base>0&&known!==null?Math.min(100,known/base*100):null;return <div key={year}><b>{year}</b><strong>{count(base)} <small>economias</small></strong><div className="va-mini-track" role={pct===null?'status':'progressbar'} aria-label={'Cobertura conhecida de projetos para '+year} aria-valuemin={pct===null?undefined:0} aria-valuemax={pct===null?undefined:100} aria-valuenow={pct===null?undefined:pct}><i style={{width:pct===null?'0%':pct+'%',background:'#007977'}}/></div>{year===2026&&<small>{count(known)} consideradas · {pct===null?'em apuração':percentage(pct)+' da meta'}{withoutSourceEconomies>0?' (parcial)':''}</small>}{year===2026?<><em className="va-traffic va-traffic-warning"><i/>Engenharia: Atenção</em><em className="va-traffic va-traffic-critical"><i/>Execução: Risco crítico</em></>:<em className="va-traffic va-traffic-unknown"><i/>Em acompanhamento</em>}</div>})}</div></div>
+ <div className="va-plan-assessment"><h3>COBERTURA DOS PROJETOS POR ANO</h3><small>Base de projetos considerados na Lista Mestra/Monday</small><div className="va-plan-years">{[2026,2027,2028].map(year=>{const base=annualGoal(year);const known=year===2026?consideredEconomies:null;const pct=base!==null&&base>0&&known!==null?Math.min(100,known/base*100):null;return <div key={year}><b>{year}</b><strong>{count(base)} <small>economias</small></strong><div className="va-mini-track" role={pct===null?'status':'progressbar'} aria-label={'Cobertura de projetos considerados para '+year} aria-valuemin={pct===null?undefined:0} aria-valuemax={pct===null?undefined:100} aria-valuenow={pct===null?undefined:pct}><i style={{width:pct===null?'0%':pct+'%',background:'#007977'}}/></div>{year===2026&&<small>{count(known)} consideradas · {pct===null?'em apuração':percentage(pct)+' da meta'}</small>}{year===2026?<><em className="va-traffic va-traffic-warning"><i/>Engenharia: Atenção</em><em className="va-traffic va-traffic-critical"><i/>Execução: Risco crítico</em></>:<em className="va-traffic va-traffic-unknown"><i/>Em acompanhamento</em>}</div>})}</div></div>
  <div className="va-plan-targets"><h3>METAS POR ANO</h3>{[2026,2027,2028].map(year=><div key={year}><span>{year}</span><b>{count(annualGoal(year))}</b></div>)}<div className="va-plan-total"><span>Total</span><b>{count(officialContractTotal)}</b></div>{annualTargetsMismatch&&<small>Revisar metas anuais cadastradas.</small>}</div>
 </div>
     </article>
-    <article className="va-card va-status"><PanelTitle icon={CheckCircle2} title="STATUS DAS MANCHAS POR SISTEMA" action={<Link className="va-inline-link" href="/engenharia#engenharia-classificacao">Atualizar status ↗</Link>}/><div className="va-status-grid"><StatusSystem system="Água" total={stainState?.totals.WATER??38} counts={stainState?.counts.WATER??null}/><StatusSystem system="Esgoto" total={stainState?.totals.SEWER??84} counts={stainState?.counts.SEWER??null}/></div><p className="va-notice-small">Classificação cadastral histórica das manchas por sistema. O status documental atualizado da Lista Mestra e os quantitativos de cobertura estão na aba Engenharia; este gráfico não equivale a aprovação integral.</p><div className="va-static-chart">
+    <article className="va-card va-status"><PanelTitle icon={CheckCircle2} title="CLASSIFICAÇÃO CADASTRAL · MANCHAS GIS" action={<Link className="va-inline-link" href="/engenharia#engenharia-classificacao">Atualizar status ↗</Link>}/><div className="va-status-grid"><StatusSystem system="Água" total={stainState?.totals.WATER??38} counts={stainState?.counts.WATER??null}/><StatusSystem system="Esgoto" total={stainState?.totals.SEWER??84} counts={stainState?.counts.SEWER??null}/></div><p className="va-notice-small">Distribuição cadastral das manchas no universo contratual (GIS). Não é o status documental da Lista Mestra e não compõe os 509 das metas de Engenharia. Consulte as frentes atualizadas em Engenharia.</p><div className="va-static-chart">
  <h3>CURVA S · ESTÁTICA ESGOTO · REV. 0B</h3>
  <div className="va-static-legend">Planejado <span style={{color:'#008681'}}>━━</span> · Aprovações formais <span style={{color:'#df8b24'}}>┄┄</span></div>
  <svg viewBox="0 0 400 172" role="img" aria-label={'Cronograma revisão 0B: '+plannedNow+' de 7 frentes previstas até hoje; '+(actualNow===null?'aprovações em apuração':actualNow+' formalmente liberadas')+'.'}>
