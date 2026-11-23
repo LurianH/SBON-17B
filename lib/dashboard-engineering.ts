@@ -1,5 +1,6 @@
 import {type SupabaseClient} from '@supabase/supabase-js';
 import {currentProjects, type CurrentProject, type Project, type Update} from './engineering';
+import {reconcileProjectQuantities,type SourceQuantity} from './engineering-source-corrections';
 
 export type EngineeringBreakdown = {
   waterEconomies: number | null; sewerEconomies: number | null;
@@ -90,7 +91,10 @@ export async function loadDashboardEngineering(db: SupabaseClient, contractId: s
     updates.push(...result.data as Update[]);
     if (result.data.length < 500) break;
   }
-  const base=summarizeDashboardEngineering(projects,updates);
+  const sourcesResult=await db.from('engineering_source_snapshot').select('segment_type,gis_code,monday_network_m,fallback_network_m,monday_economies,monday_project_status').eq('contract_id',contractId);
+  const sourceRows=(sourcesResult.error?[]:sourcesResult.data??[]) as SourceQuantity[];
+  const corrected=reconcileProjectQuantities(projects,updates,[],sourceRows);
+  const base=summarizeDashboardEngineering(projects,corrected.updates);
   const reviews=await db.from('engineering_project_review_status')
     .select('engineering_project_id,status')
     .in('engineering_project_id',projects.map(p=>p.id));
@@ -105,7 +109,9 @@ export async function loadDashboardEngineering(db: SupabaseClient, contractId: s
    networkRows.push(...net.data as NetworkReleaseRow[]);
    if(net.data.length<500)break;
   }
-  const release=summarizeEngineeringRelease(projects,updates,reviews.data as EngineeringReviewSnapshot[],networkRows);
+  const correctedIds=new Set(corrected.segments.map(row=>row.engineering_project_id));
+  const currentNetwork=networkRows.filter(row=>!correctedIds.has(row.engineering_project_id)).concat(corrected.segments);
+  const release=summarizeEngineeringRelease(projects,corrected.updates,reviews.data as EngineeringReviewSnapshot[],currentNetwork);
   // Indicadores gerenciais: somente projetos liberados, nunca o conjunto total
   // de projetos GIS sem dados técnicos. Resultados incompletos não viram metas.
   return {
