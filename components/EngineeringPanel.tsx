@@ -9,6 +9,7 @@ import {EngineeringProjectHub} from '@/components/EngineeringProjectHub';
 import {EngineeringManagementOverview} from '@/components/EngineeringManagementOverview';
 import {EngineeringAnnualTargets} from '@/components/EngineeringAnnualTargets';
 import {EngineeringSourceReconciliation,type EngineeringSourceRow} from '@/components/EngineeringSourceReconciliation';
+import {reconcileProjectQuantities} from '@/lib/engineering-source-corrections';
 
 import type {ProjectReviewRow} from '@/lib/project-review-status';
 import type {GisProjectRow} from '@/lib/gis-project-model';
@@ -37,7 +38,8 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
   const [weeklyResult,setWeeklyResult] = useState('');
 
   const [director, setDirector] = useState(role === 'DIRETORIA');
-  const all = currentProjects(projects, updates), visible = filterProjects(all, filters);
+  const corrected = reconcileProjectQuantities(projects,updates,networkRows,sourceRows);
+  const all = currentProjects(projects, corrected.updates), visible = filterProjects(all, filters);
   const canEdit = canWriteEngineering(role) && Boolean(contractId) && !director;
   const filtered = Object.values(filters).some(Boolean);
 
@@ -84,7 +86,7 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
       <a href="#engenharia-municipios">Cinco municípios</a>
       <a href="#engenharia-estruturas">Reservatórios, boosters e EEEs</a>
     </nav>
-    <EngineeringProjectHub projects={visible} gis={gisProjects} reviews={reviewRows} management={managementRows} network={networkRows} execution={executionRows} canEdit={canEdit}/>
+    <EngineeringProjectHub projects={visible} gis={gisProjects} reviews={reviewRows} management={managementRows} network={corrected.segments} execution={executionRows} canEdit={canEdit}/>
     <div id="engenharia-estruturas" className="engineering-section-label"><h2>Obras localizadas</h2><p>Reservatórios, boosters e EEEs permanecem em cadastro de estruturas, separado dos trechos lineares.</p></div>
     <LocalizedWorksEngineering role={role} contractId={contractId} projects={projects} initialWorks={localizedWorks} notice={localizedNotice} readOnly={director}/>
     <details className="panel engineering-project-history">
