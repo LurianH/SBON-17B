@@ -43,13 +43,8 @@ export function reconcileProjectQuantities(projects:Project[],updates:Update[],s
      notes:'Quantitativo de projeto vigente em '+updatedOn.split('-').reverse().join('/')+'. Fonte da metragem: '+(source.monday_network_m==null?'histórico':'atualização de referência do projeto')+'. Composição por diâmetro a conferir.'
    };
    effectiveUpdates.push(revised);
-   effectiveSegments.push({
-     id:'source-total-'+source.gis_code,engineering_project_id:pid,material:'OUTRO',
-     diameter_label:'A CONFIRMAR',segment_kind:'Total de rede atualizado; detalhamento por diâmetro pendente',
-     length_m:Number(meters),segment_status:'PROJECTED',source:'MANUAL',
-     notes:'Total vigente em '+updatedOn.split('-').reverse().join('/')+'; não converter em extensão formalmente aprovada sem validar as peças técnicas.',
-     active:true
-   });
+   // A metragem consolidada vem da fonte atual; não criar trechos artificiais editáveis.
+   // Uma distribuição por diâmetro só pode ser exibida após confirmação técnica.
  }
  return {updates:effectiveUpdates,segments:effectiveSegments};
 }
