@@ -109,8 +109,12 @@ export async function loadDashboardEngineering(db: SupabaseClient, contractId: s
    networkRows.push(...net.data as NetworkReleaseRow[]);
    if(net.data.length<500)break;
   }
-  const correctedIds=new Set(corrected.segments.map(row=>row.engineering_project_id));
-  const currentNetwork=networkRows.filter(row=>!correctedIds.has(row.engineering_project_id)).concat(corrected.segments);
+  // Redes revisadas sem composição por diâmetro validada não devem recuperar
+  // segmentos antigos como se fossem a extensão atual do projeto.
+  const correctedIds=new Set(corrected.updates
+    .filter(row=>row.id.startsWith('current-source-'))
+    .map(row=>row.engineering_project_id));
+  const currentNetwork=networkRows.filter(row=>!correctedIds.has(row.engineering_project_id));
   const release=summarizeEngineeringRelease(projects,corrected.updates,reviews.data as EngineeringReviewSnapshot[],currentNetwork);
   // Indicadores gerenciais: somente projetos liberados, nunca o conjunto total
   // de projetos GIS sem dados técnicos. Resultados incompletos não viram metas.
