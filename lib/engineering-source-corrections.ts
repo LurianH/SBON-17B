@@ -23,7 +23,7 @@ export function reconcileProjectQuantities(projects:Project[],updates:Update[],s
    const pid=legacyIdForCode[source.segment_type+':'+source.gis_code];
    if(!pid||!projectIds.has(pid))continue;
    const meters=source.monday_network_m??source.fallback_network_m;
-   const updatedOn=/^\\d{4}-\\d{2}-\\d{2}$/.test(source.source_version??'')?String(source.source_version):'2026-11-23';
+   const updatedOn=(source.source_version??'').length===10?String(source.source_version):'2026-11-23';
    if(meters==null)continue;
    const previous=effectiveUpdates.filter(u=>u.engineering_project_id===pid)
      .sort((a,b)=>b.reference_date.localeCompare(a.reference_date)||b.created_at.localeCompare(a.created_at))[0];
