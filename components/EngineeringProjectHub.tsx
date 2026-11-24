@@ -5,6 +5,7 @@ import {createClient} from '@/lib/supabase/client';
 import {municipalities,segments,type CurrentProject} from '@/lib/engineering';
 import {projectReviewLabels,type ProjectReviewRow,type ProjectReviewStatus} from '@/lib/project-review-status';
 import type {GisProjectRow} from '@/lib/gis-project-model';
+import type {EngineeringSourceRow} from '@/components/EngineeringSourceReconciliation';
 import {deliveryNames,formatKm,fmt,responsibleNames,segmentNames,validMaterials,
  type ProjectManagementRow,type ProjectNetworkRow,type EngineeringExecutionRow,type Responsible,type Delivery,type SegmentStatus} from '@/lib/engineering-unified-model';
 import './engineering-project-hub.css';
@@ -65,11 +66,22 @@ function ProjectHistory({projectId}:{projectId:string}){
   {events?.map(ev=><div key={ev.id}><strong>{ev.kind}</strong><span>{ev.description}</span><small>{new Date(ev.date).toLocaleString('pt-BR')}</small></div>)}
  </details>;
 }
-export function EngineeringProjectHub({projects,gis,reviews,management,network,execution,canEdit}:{
+export function EngineeringProjectHub({projects,gis,reviews,management,network,execution,sourceRows,canEdit}:{
  projects:CurrentProject[];gis:GisProjectRow[];reviews:ProjectReviewRow[];
- management:ProjectManagementRow[];network:ProjectNetworkRow[];execution:EngineeringExecutionRow[];canEdit:boolean;
+ management:ProjectManagementRow[];network:ProjectNetworkRow[];execution:EngineeringExecutionRow[];sourceRows:EngineeringSourceRow[];canEdit:boolean;
 }){
- const router=useRouter();
+ const normCode=(value:string)=>value.replaceAll('-','_').toUpperCase();
+ const eligibleSource=(r:EngineeringSourceRow)=>r.monday_project_status!=='Cancelado'&&
+   (r.network_document_status==='NO_OBJECTION'||r.network_document_status==='UNDER_SABESP_REVIEW');
+ const sourceLength=(r:EngineeringSourceRow)=>Number(r.monday_network_m??r.fallback_network_m??0);
+ const eligibleSources=sourceRows.filter(eligibleSource);
+ const sourceLookup=new Map(sourceRows.map(r=>[r.segment_type+'|'+normCode(r.gis_code),r]));
+ const sourceFor=(code:string,segment:'WATER'|'SEWER')=>sourceLookup.get(segment+'|'+normCode(code));
+ const sourceMeters=(rows:EngineeringSourceRow[])=>rows.reduce((sum,r)=>sum+sourceLength(r),0);
+ const sourceEconomies=(rows:EngineeringSourceRow[])=>rows.reduce((sum,r)=>sum+Number(r.monday_economies??0),0);
+ const eligibleMeters=sourceMeters(eligibleSources);
+ const eligibleEconomies=sourceEconomies(eligibleSources);
+  const router=useRouter();
  const [search,setSearch]=useState('');
  const [openCode,setOpenCode]=useState<string|null>(null);
  const [busy,setBusy]=useState(false),[message,setMessage]=useState('');
@@ -225,15 +237,15 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,e
   <div className="eph-heading"><div><span className="water-linear-eyebrow">CADASTRO ÚNICO · ENGENHARIA</span><h2>Projetos, redes e entregas</h2>
    <p>Cada código GIS abre um cadastro com Água e/ou Esgoto. O detalhamento técnico pertence ao projeto e pode ter vários materiais, diâmetros e extensões.</p></div></div>
   <div className="eph-topmetrics">
-   <article><span>Rede projetada cadastrada</span><strong>{formatKm(recorded(onlyAvailable,'ALL'))}</strong><small>Trechos informados por material e diâmetro</small></article>
-   <article><span>Rede aprovada e liberada</span><strong>{formatKm(totalApproved)}</strong><small>Status Sem objeção ou S/Obj. com ressalvas</small></article>
-   <article><span>Rede executada informada</span><strong>{formatKm(recorded(onlyAvailable,'EXECUTED'))}</strong><small>Somente trechos marcados como executados</small></article>
-   <article><span>Economias técnicas liberadas</span><strong>{fmt(approvedEconomies(releasedProjects))}</strong><small>{missingApprovedEconomies(releasedProjects)?'Parcial · '+missingApprovedEconomies(releasedProjects)+' projetos sem quantidade informada':'Soma de projetos liberados por status'}</small></article>
+   <article><span>Rede de projetos cadastrados</span><strong>{formatKm(sourceMeters(sourceRows.filter(r=>r.monday_project_status!=='Cancelado')))}</strong><small>Base de projeto atualizada · não é execução</small></article>
+   <article><span>Rede considerada na Engenharia</span><strong>{formatKm(eligibleMeters)}</strong><small>Sem objeção ou Em análise SABESP · Lista Mestra</small></article>
+   <article><span>Rede executada informada</span><strong>{formatKm(recorded(onlyAvailable,'EXECUTED'))}</strong><small>Somente trechos com execução por projeto (não é o acumulado geral)</small></article>
+   <article><span>Economias dos projetos considerados</span><strong>{fmt(eligibleEconomies)}</strong><small>{eligibleSources.length} frentes · inclui documentos em análise, não significa aprovação integral</small></article>
   </div>
   <div className="eph-split">
    {owners.map(([owner,label])=>{const s=responsibility(owner);return <article key={owner??'none'} className="panel eph-owner">
     <h3>{label}</h3><strong>{s.count} <small>projetos atribuídos</small></strong>
-    <p>Economias técnicas liberadas: <b>{fmt(s.economies)}</b></p><p>Rede projetada: <b>{formatKm(s.projected)}</b></p><p>Rede liberada: <b>{formatKm(s.approved)}</b></p>
+    <p>Economias registradas no cadastro legado: <b>{fmt(s.economies)}</b></p><p>Rede cadastrada por diâmetro: <b>{formatKm(s.projected)}</b></p><p>Rede liberada no cadastro legado: <b>{formatKm(s.approved)}</b></p>
     <p>Finalizados: {s.completed} · Em andamento: {s.progress}</p>
     <small>A iniciar: {s.notStarted} · Sem entrega informada: {s.noDelivery}</small>
    </article>})}
@@ -243,9 +255,9 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,e
    {citySummary.map(c=><article className="panel" key={c.city}>
     <h4>{c.city}</h4><p><b>{c.count}</b> manchas · <b>{c.water}</b> Água · <b>{c.sewer}</b> Esgoto</p>
     <div><span>Economias estimadas Água / Esgoto</span><b>{fmt(c.economiesWater)} / {fmt(c.economiesSewer)}</b></div>
-    <div><span>Economias técnicas liberadas</span><b>{fmt(c.economiesApproved)}</b></div>
-    <div><span>Rede projetada cadastrada</span><b>{formatKm(c.projected)}</b></div>
-    <div><span>Rede aprovada e liberada</span><b>{formatKm(c.approved)}</b></div>
+    <div><span>Economias consideradas · Lista Mestra</span><b>{fmt(sourceEconomies(eligibleSources.filter(row=>row.municipality===c.city)))}</b></div>
+    <div><span>Rede de projetos informada</span><b>{formatKm(sourceMeters(sourceRows.filter(row=>row.municipality===c.city&&row.monday_project_status!=='Cancelado')))}</b></div>
+    <div><span>Rede considerada · Sem objeção / Em análise</span><b>{formatKm(sourceMeters(eligibleSources.filter(row=>row.municipality===c.city)))}</b></div>
     <div><span>Rede executada informada</span><b>{formatKm(c.executed)}</b></div>
    </article>)}
    </div>
@@ -263,14 +275,18 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,e
     {openCode===g.id&&<div className="eph-members">
      {g.members.map(({project:p,gis:record})=>{
       const parts=segMap.get(p.id)??[],manager=controls.get(p.id),status=statusOf(p.id);
+      const source=sourceFor(record.gis_code,p.segment_type);
       const economy=p.segment_type==='WATER'?record.economies_ica:record.economies_ice;
       return <div className="eph-member" key={p.id}>
        <div className="eph-member-heading"><h4>{segments[p.segment_type]} · {p.project_name}</h4><span>{record.cancelled?'Cancelada':projectReviewLabels[status]}</span></div>
        <div className="eph-info">
         <span>Economias GIS estimadas: <b>{blank(economy)}</b></span>
-        <span>Economias aprovadas: <b>{blank(p.current?.approved_economies)}</b></span>
-        <span>Rede aprovada: <b>{formatKm(sumParts(p,'APPROVED'))}</b></span>
-        <span>Rede projetada: <b>{formatKm(sumParts(p,'ALL'))}</b></span>
+        <span>Economias do projeto: <b>{source?blank(source.monday_economies):'Não conciliado'}</b></span>
+        <span>Extensão atual do projeto: <b>{source?formatKm(sourceLength(source)):'Não conciliado'}</b></span>
+        <span>Andamento do projeto: <b>{source?.monday_project_status??'Não informado'}</b></span>
+        <span>Status documental · Lista Mestra: <b>{source?.master_document_status??'Correspondência não confirmada'}</b></span>
+        <span>Inclui na cobertura da Engenharia: <b>{source?(eligibleSource(source)?'Sim':'Não'):'Não'}</b></span>
+        <span>Rede detalhada por diâmetro: <b>{parts.length?formatKm(sumParts(p,'ALL')):'Pendente de composição técnica'}</b></span>
         {executedPhysical(p)>0&&<span>Rede executada aferida: <b>{formatKm(executedPhysical(p))}</b></span>}
        </div>
        {execution.some(row=>row.engineering_project_id===p.id)&&<p className="eph-physical-note">
@@ -279,7 +295,7 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,e
         {p.id==='9c8c09c3-a013-4976-ad93-0bcacb6c297b'?' Última execução acrescida até 15/10; 16/10 confirmou o mesmo acumulado.':''}
        </p>}
        <div className="eph-fieldset">
-        <label>Situação do projeto
+        <label>Situação do projeto no cadastro anterior
          <select value={status} disabled={!canEdit||busy||record.cancelled} onChange={e=>void saveStatus(p,e.target.value as ProjectReviewStatus,record)}>
           {statuses.map(k=><option key={k} value={k}>{projectReviewLabels[k]}</option>)}
          </select></label>
@@ -297,7 +313,7 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,e
         </form>
        </div>
        <details className="eph-technical"><summary>Aprovação técnica e economias</summary>
-        <p>Separado do status de liberação. Campos sem informação permanecem em aberto.</p>
+        <p>Cadastro técnico histórico. Os quantitativos correntes são exibidos acima; não confundir dados de projeto com economias aprovadas.</p>
         <form action={async data=>{await saveTechnical(p,data)}} className="eph-technical-form">
          <label>Economias aprovadas<input name="approved_economies" type="number" min="0" step="1" defaultValue={p.current?.approved_economies??''} disabled={!canEdit||busy}/></label>
          <label>Concepção<select name="concept_status" defaultValue={p.current?.concept_status??''} disabled={!canEdit||busy}><option value="">Não informada</option><option value="PENDING">Pendente</option><option value="IN_PROGRESS">Em andamento</option><option value="APPROVED">Aprovada</option></select></label>
@@ -308,7 +324,7 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,e
         </form>
        </details>
        <div className="eph-network">
-        <div className="eph-network-header"><h5>Trechos de rede · material, diâmetro e metragem</h5>
+        <div className="eph-network-header"><h5>Composição por diâmetro · material, diâmetro e metragem</h5>
          <small>{parts.length} trechos · {formatKm(sumParts(p,'ALL'))} cadastrados</small>
         </div>
         {parts.length>0?<div className="eph-segment-list">{parts.map(part=><details key={part.id}>
@@ -319,7 +335,7 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,e
            {retire===part.id?<><span>Confirmar desativação do trecho? O histórico será mantido.</span><button disabled={busy} onClick={()=>void retireSegment(part)}>Confirmar</button><button type="button" onClick={()=>setRetire(null)}>Cancelar</button></>
            :<button type="button" onClick={()=>setRetire(part.id)}>Desativar trecho</button>}
           </div>}</>:<p>{part.segment_kind??'Rede'} · {part.notes??'Sem observações'}</p>}
-        </details>)}</div>:<p>Nenhum trecho informado. A metragem não será estimada automaticamente.</p>}
+        </details>)}</div>:<p>Composição por diâmetro ainda não informada. A extensão total do projeto aparece acima, conforme a fonte atualizada.</p>}
         {canEdit&&!record.cancelled&&<details className="eph-add"><summary>+ Adicionar material, diâmetro e extensão</summary><NetworkForm projectId={p.id} onSave={saveSegment} busy={busy}/></details>}
        </div>
        <ProjectHistory projectId={p.id}/>
