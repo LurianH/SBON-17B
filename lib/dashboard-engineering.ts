@@ -91,7 +91,7 @@ export async function loadDashboardEngineering(db: SupabaseClient, contractId: s
     updates.push(...result.data as Update[]);
     if (result.data.length < 500) break;
   }
-  const sourcesResult=await db.from('engineering_source_snapshot').select('segment_type,gis_code,monday_network_m,fallback_network_m,monday_economies,monday_project_status').eq('contract_id',contractId);
+  const sourcesResult=await db.from('engineering_source_snapshot').select('segment_type,gis_code,monday_network_m,fallback_network_m,monday_economies,monday_project_status,source_version').eq('contract_id',contractId);
   const sourceRows=(sourcesResult.error?[]:sourcesResult.data??[]) as SourceQuantity[];
   const corrected=reconcileProjectQuantities(projects,updates,[],sourceRows);
   const base=summarizeDashboardEngineering(projects,corrected.updates);
