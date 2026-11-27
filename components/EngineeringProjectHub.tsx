@@ -1,5 +1,5 @@
-import {isOperationallyReleased,isOperationallyReleasedFront} from '@/lib/engineering-release-policy';
 'use client';
+import {isOperationallyReleased,isOperationallyReleasedFront} from '@/lib/engineering-release-policy';
 import {useState} from 'react';
 import {useRouter} from 'next/navigation';
 import {createClient} from '@/lib/supabase/client';
