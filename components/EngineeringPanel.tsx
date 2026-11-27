@@ -6,7 +6,6 @@ import {createClient} from '@/lib/supabase/client';
 import {canWriteEngineering, conceptLabels, currentProjects, deliveryLabels, emptyFilters, executiveLabels, filterProjects,
   municipalities, segments, type Category, type EngineeringFilters, type Project, type Update} from '@/lib/engineering';
 import {EngineeringProjectHub,type EngineeringMasterFront} from '@/components/EngineeringProjectHub';
-import {EngineeringManagementOverview} from '@/components/EngineeringManagementOverview';
 import {EngineeringAnnualTargets} from '@/components/EngineeringAnnualTargets';
 import type {EngineeringSourceRow} from '@/components/EngineeringSourceReconciliation';
 import {reconcileProjectQuantities} from '@/lib/engineering-source-corrections';
@@ -39,7 +38,7 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
   const [weeklyResult,setWeeklyResult] = useState('');
 
   const [director, setDirector] = useState(role === 'DIRETORIA');
-  const corrected = reconcileProjectQuantities(projects,updates,networkRows,sourceRows);
+  const corrected = reconcileProjectQuantities(projects,updates,networkRows,sourceRows,gisProjects);
   const all = currentProjects(projects, corrected.updates), visible = filterProjects(all, filters);
   const canEdit = canWriteEngineering(role) && Boolean(contractId) && !director;
   const filtered = Object.values(filters).some(Boolean);
@@ -71,7 +70,6 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
     {key: 'executive', label: 'Status do executivo', options: Object.entries(executiveLabels)},
   ];
   return <div className="engineering">
-    <details style={{margin:"0 0 16px"}}><summary style={{cursor:"pointer",fontWeight:700,padding:"8px 0"}}>Consultar indicadores históricos de aprovações (a conciliar com a Lista Mestra)</summary><div id="engenharia-aprovacoes"><EngineeringManagementOverview projects={visible} reviews={reviewRows}/></div></details>
     <EngineeringAnnualTargets contractId={contractId}/>
     <div className="engineering-toolbar"><p>Projetos cadastrados por mancha e sistema, com situação gerencial</p><div>{role !== 'DIRETORIA' && <button onClick={() => setDirector(!director)}>{director ? 'Sair do Modo Diretoria' : 'Modo Diretoria'}</button>}</div></div>
     {notice && <p role="alert" className="engineering-notice">{notice}</p>}
