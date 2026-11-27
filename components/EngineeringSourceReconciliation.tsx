@@ -3,7 +3,7 @@ import {useMemo,useState} from 'react';
 
 export type EngineeringSourceRow={
  id:number;segment_type:'WATER'|'SEWER';municipality:string;gis_code:string;neighborhood:string;
- monday_economies:number|null;monday_network_m:number|string|null;fallback_network_m:number|string|null;fallback_network_source:string|null;monday_project_status:string|null;master_front:string|null;
+ monday_economies:number|null;monday_network_m:number|string|null;fallback_network_m:number|string|null;fallback_network_source:string|null;master_network_m:number|string|null;master_economies:number|null;master_scope_type:string|null;monday_project_status:string|null;master_front:string|null;
  master_document_status:string|null;network_document_status:string|null;master_reference_code:string|null;source_version:string;
 };
 const len=(r:EngineeringSourceRow)=>r.monday_network_m==null?(r.fallback_network_m==null?null:Number(r.fallback_network_m)):Number(r.monday_network_m);
