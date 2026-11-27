@@ -123,6 +123,7 @@ export default function Dashboard(){
  const [sourceTotals,setSourceTotals]=useState<{water:{count:number,economies:number,meters:number,missing:number};sewer:{count:number,economies:number,meters:number,missing:number};matched:number}|null>(null);
  const [structures,setStructures]=useState<Structures|null>(null);
  const [masterStructures,setMasterStructures]=useState<Structures|null>(null);
+ const [documentCurves,setDocumentCurves]=useState<Array<{system:string;reference_date:string;planned_accum_fraction:number;realized_accum_fraction:number;realized_current_fraction:number;document_weight:number}>>([]);
  const [stainState,setStainState]=useState<StainState|null>(null);
  const [annualTargets,setAnnualTargets]=useState<{year:number;total:number}[]>([]);
  const [attack2026,setAttack2026]=useState<{economies:number;stains:number}|null>(null);
@@ -136,14 +137,15 @@ export default function Dashboard(){
    setData(result);
    if(!result.contractId||result.source!=='supabase')return;
    const db=createClient();if(!db)return;
-   const [works,targets,stains,annual,attack,sources,masterLocal]=await Promise.all([
+   const [works,targets,stains,annual,attack,sources,masterLocal,masterCurve]=await Promise.all([
     db.from('engineering_localized_works').select('kind,quantity').eq('contract_id',result.contractId).eq('active',true),
     db.from('contract_stain_targets').select('segment_type,total_count').eq('contract_id',result.contractId),
     db.from('gis_stain_system_effective').select('segment_type,effective_status').eq('contract_id',result.contractId),
     db.from('annual_targets').select('year,target_economies').eq('contract_id',result.contractId).gte('year',2026).lte('year',2028).order('year'),
     db.from('engineering_attack_plan_2026').select('stain_id,planned_economies'),
     db.from('engineering_source_snapshot').select('segment_type,monday_economies,monday_network_m,fallback_network_m,master_network_m,master_economies,master_front,monday_project_status,network_document_status').eq('contract_id',result.contractId),
-    db.from('engineering_master_local_snapshot').select('work_type,quantity').eq('contract_id',result.contractId)
+    db.from('engineering_master_local_snapshot').select('work_type,quantity').eq('contract_id',result.contractId),
+    db.from('engineering_master_curve_snapshot').select('system,reference_date,planned_accum_fraction,realized_accum_fraction,realized_current_fraction,document_weight').eq('contract_id',result.contractId)
    ]);
    if(!active)return;
 
@@ -191,6 +193,7 @@ export default function Dashboard(){
    }
    if(!attack.error&&attack.data){const unique=new Set(attack.data.map(row=>String(row.stain_id)).filter(Boolean));setAttack2026({economies:attack.data.reduce((n,row)=>n+(Number.isFinite(Number(row.planned_economies))?Math.max(0,Number(row.planned_economies)):0),0),stains:unique.size});}
    if(!annual.error&&annual.data)setAnnualTargets(annual.data.map(row=>({year:Number(row.year),total:Number(row.target_economies)})));
+   if(!masterCurve.error&&masterCurve.data)setDocumentCurves(masterCurve.data.map(r=>({...r,planned_accum_fraction:Number(r.planned_accum_fraction),realized_accum_fraction:Number(r.realized_accum_fraction),realized_current_fraction:Number(r.realized_current_fraction),document_weight:Number(r.document_weight)})));
    if(!masterLocal.error&&masterLocal.data){
     const ms={reservoirs:0,boosters:0,eees:0};
     for(const row of masterLocal.data){const n=Number(row.quantity)||0;
@@ -290,20 +293,22 @@ export default function Dashboard(){
 </div>
     </article>
     <article className="va-card va-status"><PanelTitle icon={CheckCircle2} title="STATUS DAS REDES · LISTA MESTRA" action={<Link className="va-inline-link" href="/engenharia#engenharia-projetos">Consultar projetos ↗</Link>}/><div className="va-status-grid"><StatusSystem system="Água" total={stainState?.totals.WATER??38} counts={stainState?.counts.WATER??null}/><StatusSystem system="Esgoto" total={stainState?.totals.SEWER??84} counts={stainState?.counts.SEWER??null}/></div><p className="va-notice-small">Situação vigente das frentes de rede conforme ESCOPO_LINEARES da Lista Mestra de 27/11/2026. Uma mancha com vários trechos é contabilizada apenas uma vez por sistema; status dos documentos disponível no cadastro da Engenharia.</p><div className="va-static-chart">
- <h3>CURVA S · ESTÁTICA ESGOTO · REV. 0B</h3>
- <div className="va-static-legend">Planejado <span style={{color:'#008681'}}>━━</span> · Aprovações formais <span style={{color:'#df8b24'}}>┄┄</span></div>
- <svg viewBox="0 0 400 172" role="img" aria-label={'Cronograma revisão 0B: '+plannedNow+' de 7 frentes previstas até hoje; '+(actualNow===null?'aprovações em apuração':actualNow+' formalmente liberadas')+'.'}>
-  <line x1="36" y1="135" x2="382" y2="135" stroke="#b9d3d0"/><line x1="36" y1="20" x2="36" y2="135" stroke="#b9d3d0"/>
-  {[0,1,3,5,7].map(n=><g key={n}><line x1="36" x2="374" y1={chartY(n)} y2={chartY(n)} stroke="#e5eeec" strokeDasharray="2 4"/><text x="26" y={chartY(n)+4} textAnchor="end" fontSize="10">{n}</text></g>)}
-  <path d={smoothPlannedPath(plannedMilestones)} fill="none" stroke="#008681" strokeWidth="3" strokeLinejoin="round"/>
-  {plannedMilestones.map(point=><circle key={point.date} cx={chartX(point.date)} cy={chartY(point.count)} r="3.7" fill="#008681"/>)}
-  {staticDelivery!==null&&<><path d={stepPath(staticDelivery.filter(item=>item.date<=todayInChart),todayInChart)} fill="none" stroke="#df8b24" strokeWidth="3" strokeDasharray="7 5" strokeLinejoin="round"/><circle cx={chartX(todayInChart)} cy={chartY(actualNow??0)} r="4" fill="#fff" stroke="#df8b24" strokeWidth="2.5"/></>}
-  <line x1={chartX(todayInChart)} x2={chartX(todayInChart)} y1="20" y2="135" stroke="#7c9290" strokeDasharray="3 4" strokeWidth="1.2"/>
-  {['2026-10-02','2026-11-13','2026-12-11','2027-01-15'].map(value=><text key={value} x={chartX(value)} y="157" textAnchor="middle" fontSize="9">{showDate(value)}</text>)}
- </svg>
- <div className="va-static-foot"><span>Previsto até {showDate(todaySchedule)}: <b>{plannedNow} de 7</b></span><span>Liberado: <b>{actualNow===null?'em apuração':actualNow+' de 7'}</b></span><span>Aderência: <b>{adherence===null?'a apurar':percentage(adherence)}</b></span><span>Desvio: <b>{actualNow===null?'—':(actualNow-plannedNow)+' frente(s)'}</b></span></div>
- <small>Fonte: E2786-00-CR-GR-001, revisão 0B. Linha verde = interpolação suave entre os marcos previstos das sete frentes (não é produtividade diária medida); laranja = projetos com “Sem objeção” ou “Sem objeção com ressalvas” formalmente registrados. A comparação é conservadora: término de projeto e aprovação formal são marcos diferentes; “em finalização” não equivale a aprovação.</small>
- <details><summary>Ver marcos previstos das 7 frentes</summary><div className="va-static-foot">{staticSchedule.map(group=><span key={group.name}>{group.name}: <b>{showDate(group.due)}</b></span>)}</div>{staticMissing.length>0&&<small>Sem vínculo cadastral completo: {staticMissing.join(', ')}.</small>}</details>
+ <h3>CURVA S · AVANÇO DOCUMENTAL · LISTA MESTRA</h3>
+ <p className="va-notice-small">Progresso ponderado dos documentos do escopo. É distinto de economias de projeto, extensão de rede e execução física.</p>
+ {documentCurves.length?['PROGRAM','WATER','SEWER'].map(key=>{
+   const r=documentCurves.find(v=>v.system===key);
+   if(!r)return null;
+   const label=key==='PROGRAM'?'Programa geral':key==='WATER'?'Água':'Esgoto';
+   const planned=r.planned_accum_fraction*100,actual=r.realized_accum_fraction*100;
+   return <div key={key} style={{marginBottom:14}}>
+    <div style={{display:'flex',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}><b>{label}</b><small>Previsto: {percentage(planned)} · Realizado consolidado: {percentage(actual)}</small></div>
+    <div className="va-mini-track" style={{margin:'7px 0',position:'relative'}} aria-label={label+': previsto '+percentage(planned)+'; realizado '+percentage(actual)}>
+      <i style={{width:Math.min(100,actual)+'%',background:'#007977'}}/>
+    </div>
+    <small>Última semana da planilha: 25/11/2026 · {count(r.document_weight)} documentos ponderados · avanço calculado atual: {percentage(r.realized_current_fraction*100)}</small>
+   </div>;
+ }):<p>Curva S documental aguardando consulta à Lista Mestra.</p>}
+ <small>Fonte: CR_CURVA_S, CR_CURVA_S_AGUA e CR_CURVA_S_ESGOTO do arquivo final recebido em 27/11/2026. Não é a Curva S de economias executadas.</small>
  </div></article>
    </section>
    <section className="va-bottom-grid">
