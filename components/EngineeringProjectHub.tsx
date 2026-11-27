@@ -83,7 +83,23 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,e
  const sourceLength=(r:EngineeringSourceRow)=>Number(r.master_network_m??0);
  const eligibleSources=sourceRows.filter(eligibleSource);
  const sourceLookup=new Map(sourceRows.filter(isAuthoritative).map(r=>[r.segment_type+'|'+normCode(r.gis_code),r]));
- const sourceFor=(code:string,segment:'WATER'|'SEWER')=>sourceLookup.get(segment+'|'+normCode(code));
+ const networkTypes=['Rede de Distribuição','Rede Coletora','Rede Primária','Coletor Tronco','Linha de Recalque'];
+ const rank=(r:EngineeringMasterFront)=>r.network_type==='Rede de Distribuição'||r.network_type==='Rede Coletora'?5:r.network_type==='Rede Primária'?4:r.network_type==='Coletor Tronco'?3:2;
+ const canonicalFronts=[...new Map(masterFronts.filter(f=>f.gis_code&&networkTypes.includes(f.network_type??''))
+   .sort((a,b)=>rank(b)-rank(a)||Number(b.scope_length_m??0)-Number(a.scope_length_m??0))
+   .reverse().map(f=>[f.segment_type+'|'+normCode(f.gis_code??'')+'|'+f.municipality,f])).values()];
+ const sourceFor=(code:string,segment:'WATER'|'SEWER',city:string)=>{
+   const base=sourceLookup.get(segment+'|'+normCode(code));
+   const front=canonicalFronts.find(f=>f.segment_type===segment&&f.municipality===city&&f.gis_code&&normCode(f.gis_code)===normCode(code));
+   if(!front)return null;
+   return {...(base??{}),
+     master_network_m:front.scope_length_m,master_economies:front.scope_economies,
+     master_document_status:front.document_status_rollup,master_front:front.front_name,
+     network_document_status:front.front_status==='SEM OBJEÇÃO'?'NO_OBJECTION':
+       front.front_status==='EM ANÁLISE SABESP'?'UNDER_SABESP_REVIEW':
+       front.front_status==='S/OBJ. C/ RES.'?'NO_OBJECTION_RESERVATIONS':'IN_PROGRESS'
+   } as EngineeringSourceRow;
+ };
  const sourceMeters=(rows:EngineeringSourceRow[])=>rows.reduce((sum,r)=>sum+sourceLength(r),0);
  const sourceEconomies=(rows:EngineeringSourceRow[])=>rows.reduce((sum,r)=>sum+Number(r.master_economies??0),0);
  const eligibleMeters=sourceMeters(eligibleSources);
@@ -143,8 +159,13 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,e
  const missingApprovedEconomies=(list:CurrentProject[])=>list.filter(p=>p.current?.approved_economies==null).length;
  const responsibility=(owner:Responsible|null)=>{
   const subset=onlyAvailable.filter(p=>(managed(p)?.responsible??null)===owner);
-  return {count:subset.length,economies:approvedEconomies(subset.filter(p=>released(statusOf(p.id)))),approved:recorded(subset.filter(p=>released(statusOf(p.id))),'APPROVED'),
-   projected:recorded(subset,'ALL'),completed:subset.filter(p=>delivery(p)==='COMPLETED').length,
+  const ids=new Set(subset.map(p=>p.id));
+  const linked=gis.filter(g=>g.engineering_project_id&&ids.has(g.engineering_project_id))
+    .map(g=>sourceFor(g.gis_code,g.segment_type,g.municipality))
+    .filter((s):s is EngineeringSourceRow=>Boolean(s));
+  const unique=[...new Set(linked)];
+  return {count:subset.length,economies:sourceEconomies(linked.filter(eligibleSource)),approved:sourceMeters(linked.filter(eligibleSource)),
+   projected:sourceMeters(linked),completed:subset.filter(p=>delivery(p)==='COMPLETED').length,
    progress:subset.filter(p=>delivery(p)==='IN_PROGRESS').length,notStarted:subset.filter(p=>delivery(p)==='NOT_STARTED').length,
    noDelivery:subset.filter(p=>delivery(p)==null).length};
  };
@@ -154,7 +175,7 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,e
   const cityGis=new Map(gis.filter(row=>row.municipality===city&&!row.cancelled).map(row=>[row.id,row])).size;
   const releasedProjects=cityProjects.filter(p=>released(statusOf(p.id)));
   return {city,count:cityGis,water:water.length,sewer:sewer.length,
-   projected:recorded(cityProjects,'ALL'),approved:recorded(releasedProjects,'APPROVED'),
+   projected:sourceMeters(sourceRows.filter(r=>r.municipality===city&&isAuthoritative(r))),approved:sourceMeters(eligibleSources.filter(r=>r.municipality===city)),
    executed:recorded(cityProjects,'EXECUTED'),
    economiesWater:water.reduce((a,p)=>a+(gis.find(g=>g.engineering_project_id===p.id)?.economies_ica??0),0),
    economiesSewer:sewer.reduce((a,p)=>a+(gis.find(g=>g.engineering_project_id===p.id)?.economies_ice??0),0),
@@ -282,7 +303,7 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,e
     {openCode===g.id&&<div className="eph-members">
      {g.members.map(({project:p,gis:record})=>{
       const parts=segMap.get(p.id)??[],manager=controls.get(p.id),status=statusOf(p.id);
-      const source=sourceFor(record.gis_code,p.segment_type);
+      const source=sourceFor(record.gis_code,p.segment_type,record.municipality);
       const economy=p.segment_type==='WATER'?record.economies_ica:record.economies_ice;
       return <div className="eph-member" key={p.id}>
        <div className="eph-member-heading"><h4>{segments[p.segment_type]} · {p.project_name}</h4><span>{record.cancelled?'Cancelada':projectReviewLabels[status]}</span></div>
