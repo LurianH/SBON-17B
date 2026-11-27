@@ -1,3 +1,4 @@
+import {isOperationallyReleased,isOperationallyReleasedFront} from '@/lib/engineering-release-policy';
 'use client';
 import {useState} from 'react';
 import {useRouter} from 'next/navigation';
@@ -79,7 +80,7 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,e
  const normCode=(value:string)=>value.replaceAll('-','_').toUpperCase();
  const isAuthoritative=(r:EngineeringSourceRow)=>r.master_network_m!==null;
  const eligibleSource=(r:EngineeringSourceRow)=>isAuthoritative(r)&&
-   (r.network_document_status==='NO_OBJECTION'||r.network_document_status==='UNDER_SABESP_REVIEW');
+   isOperationallyReleased(r.network_document_status);
  const sourceLength=(r:EngineeringSourceRow)=>Number(r.master_network_m??0);
  const eligibleSources=sourceRows.filter(eligibleSource);
  const sourceLookup=new Map(sourceRows.filter(isAuthoritative).map(r=>[r.segment_type+'|'+normCode(r.gis_code),r]));
@@ -104,7 +105,7 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,e
  const sourceEconomies=(rows:EngineeringSourceRow[])=>rows.reduce((sum,r)=>sum+Number(r.master_economies??0),0);
  const frontMeters=(rows:EngineeringMasterFront[])=>rows.reduce((n,f)=>n+Number(f.scope_length_m??0),0);
  const frontEconomies=(rows:EngineeringMasterFront[])=>rows.reduce((n,f)=>n+Number(f.scope_economies??0),0);
- const eligibleFronts=canonicalFronts.filter(f=>f.front_status==='SEM OBJEÇÃO'||f.front_status==='EM ANÁLISE SABESP');
+ const eligibleFronts=canonicalFronts.filter(f=>isOperationallyReleasedFront(f.front_status));
  const eligibleMeters=sourceMeters(eligibleSources);
  const eligibleEconomies=sourceEconomies(eligibleSources);
   const router=useRouter();
@@ -268,14 +269,14 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,e
    <p>Cada código GIS abre um cadastro com Água e/ou Esgoto. O detalhamento técnico pertence ao projeto e pode ter vários materiais, diâmetros e extensões.</p></div></div>
   <div className="eph-topmetrics">
    <article><span>Rede de projetos cadastrados</span><strong>{formatKm(sourceMeters(sourceRows.filter(isAuthoritative)))}</strong><small>Escopo por mancha da Lista Mestra final · não é execução</small></article>
-   <article><span>Rede considerada na Engenharia</span><strong>{formatKm(eligibleMeters)}</strong><small>Sem objeção ou Em análise SABESP · escopo Lista Mestra</small></article>
+   <article><span>Rede liberada para obra · critério interno</span><strong>{formatKm(eligibleMeters)}</strong><small>Sem objeção + Em análise SABESP = liberadas para obra (critério interno)</small></article>
    <article><span>Rede executada informada</span><strong>{formatKm(recorded(onlyAvailable,'EXECUTED'))}</strong><small>Somente trechos com execução por projeto (não é o acumulado geral)</small></article>
-   <article><span>Economias dos projetos considerados</span><strong>{fmt(eligibleEconomies)}</strong><small>{eligibleSources.length} frentes · inclui documentos em análise, não significa aprovação integral</small></article>
+   <article><span>Economias liberadas para obra · critério interno</span><strong>{fmt(eligibleEconomies)}</strong><small>{eligibleSources.length} frentes · inclui Em análise SABESP como liberada operacionalmente; não significa aprovação formal integral</small></article>
   </div>
   <div className="eph-split">
    {owners.map(([owner,label])=>{const s=responsibility(owner);return <article key={owner??'none'} className="panel eph-owner">
     <h3>{label}</h3><strong>{s.count} <small>projetos atribuídos</small></strong>
-    <p>Economias consideradas pela Lista Mestra: <b>{fmt(s.economies)}</b></p><p>Rede de projetos da Lista Mestra: <b>{formatKm(s.projected)}</b></p><p>Rede considerada pela Lista Mestra: <b>{formatKm(s.approved)}</b></p>
+    <p>Economias liberadas para obra conforme Lista Mestra: <b>{fmt(s.economies)}</b></p><p>Rede de projetos da Lista Mestra: <b>{formatKm(s.projected)}</b></p><p>Rede liberada para obra conforme Lista Mestra: <b>{formatKm(s.approved)}</b></p>
     <p>Finalizados: {s.completed} · Em andamento: {s.progress}</p>
     <small>A iniciar: {s.notStarted} · Sem entrega informada: {s.noDelivery}</small>
    </article>})}
@@ -285,9 +286,9 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,e
    {citySummary.map(c=><article className="panel" key={c.city}>
     <h4>{c.city}</h4><p><b>{c.count}</b> manchas · <b>{c.water}</b> Água · <b>{c.sewer}</b> Esgoto</p>
     <div><span>Economias estimadas Água / Esgoto</span><b>{fmt(c.economiesWater)} / {fmt(c.economiesSewer)}</b></div>
-    <div><span>Economias consideradas · Lista Mestra</span><b>{fmt(frontEconomies(eligibleFronts.filter(row=>row.municipality===c.city)))}</b></div>
+    <div><span>Economias liberadas para obra · Lista Mestra</span><b>{fmt(frontEconomies(eligibleFronts.filter(row=>row.municipality===c.city)))}</b></div>
     <div><span>Rede de projetos informada</span><b>{formatKm(frontMeters(canonicalFronts.filter(row=>row.municipality===c.city)))}</b></div>
-    <div><span>Rede considerada · Sem objeção / Em análise</span><b>{formatKm(frontMeters(eligibleFronts.filter(row=>row.municipality===c.city)))}</b></div>
+    <div><span>Rede liberada para obra · Sem objeção / Em análise</span><b>{formatKm(frontMeters(eligibleFronts.filter(row=>row.municipality===c.city)))}</b></div>
     <div><span>Rede executada informada</span><b>{formatKm(c.executed)}</b></div>
    </article>)}
    </div>
@@ -315,7 +316,7 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,e
         <span>Extensão atual do projeto: <b>{source?formatKm(sourceLength(source)):'Não conciliado'}</b></span>
         <span>Andamento informado anteriormente: <b>{source?.monday_project_status??'Não informado'}</b></span>
         <span>Status documental · Lista Mestra: <b>{source?.master_document_status??'Correspondência não confirmada'}</b></span>
-        <span>Inclui na cobertura da Engenharia: <b>{source?(eligibleSource(source)?'Sim':'Não'):'Não'}</b></span>
+        <span>Liberada para obra (critério interno): <b>{source?(eligibleSource(source)?'Sim':'Não'):'Não'}</b></span>
         <span>Rede detalhada por diâmetro: <b>{parts.length?formatKm(sumParts(p,'ALL')):'Pendente de composição técnica'}</b></span>
         {executedPhysical(p)>0&&<span>Rede executada aferida: <b>{formatKm(executedPhysical(p))}</b></span>}
        </div>
