@@ -1,13 +1,14 @@
 /** Critério operacional interno do contrato SBON 17B.
- * Uma frente de rede "Sem objeção" ou "Em análise SABESP" conta como
- * liberada para obra nos indicadores gerenciais. O status documental original
- * continua preservado e pode não constituir aprovação formal da SABESP.
+ * Frentes com "Sem objeção", "Sem objeção com ressalva" ou "Em análise SABESP"
+ * contam como liberadas para obra nos indicadores gerenciais.
+ * A classificação documental original permanece preservada e não implica
+ * aprovação formal sem ressalvas pela SABESP.
  */
-export const OPERATIONALLY_RELEASED_NETWORK_STATUSES=['NO_OBJECTION','UNDER_SABESP_REVIEW'] as const;
+export const OPERATIONALLY_RELEASED_NETWORK_STATUSES=['NO_OBJECTION','NO_OBJECTION_RESERVATIONS','UNDER_SABESP_REVIEW'] as const;
 export function isOperationallyReleased(status:string|null|undefined):boolean {
- return status==='NO_OBJECTION'||status==='UNDER_SABESP_REVIEW';
+ return status==='NO_OBJECTION'||status==='NO_OBJECTION_RESERVATIONS'||status==='UNDER_SABESP_REVIEW';
 }
 export function isOperationallyReleasedFront(status:string|null|undefined):boolean {
- return status==='SEM OBJEÇÃO'||status==='EM ANÁLISE SABESP';
+ return status==='SEM OBJEÇÃO'||status==='S/OBJ. C/ RES.'||status==='SEM OBJEÇÃO COM RESSALVA'||status==='EM ANÁLISE SABESP';
 }
-export const RELEASE_POLICY_DESCRIPTION='Liberadas para obra (critério interno): Sem objeção + Em análise SABESP';
+export const RELEASE_POLICY_DESCRIPTION='Liberadas para obra (critério interno): Sem objeção + Sem objeção com ressalva + Em análise SABESP';
