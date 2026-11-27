@@ -3,6 +3,7 @@ import {AppShell} from '@/components/AppShell';
 import {EngineeringPanel} from '@/components/EngineeringPanel';
 import type {EngineeringSourceRow} from '@/components/EngineeringSourceReconciliation';
 import type {EngineeringMasterFront} from '@/components/EngineeringProjectHub';
+import type {EngineeringMasterLocal} from '@/components/LocalizedWorksEngineering';
 import {createClient} from '@/lib/supabase/server';
 import {canReadEngineering, type Category, type Project, type Update} from '@/lib/engineering';
 import {LOCALIZED_DATABASE_ENABLED, loadLocalizedWorks} from '@/lib/localized-works-remote';
@@ -99,11 +100,16 @@ export default async function EngineeringPage() {
     const result=await db.from('engineering_master_front_snapshot').select('id,front_name,municipality,gis_code,segment_type,network_type,scope_length_m,scope_economies,front_status,document_status_rollup,source_revision').eq('contract_id',contract.id).order('id');
     if(result.error){notice='Não foi possível consultar as frentes da Lista Mestra.';}else masterFronts=(result.data??[]) as EngineeringMasterFront[];
   }
+  let masterLocals:EngineeringMasterLocal[]=[];
+  if(contract&&!notice){
+    const locals=await db.from('engineering_master_local_snapshot').select('id,front_name,municipality,gis_code,segment_type,work_type,quantity,document_status_rollup,source_revision').eq('contract_id',contract.id).order('id');
+    if(locals.error)notice='Não foi possível carregar as estruturas da Lista Mestra.';else masterLocals=(locals.data??[]) as EngineeringMasterLocal[];
+  }
   let reviewRows: ProjectReviewRow[]=[];
   if(contract&&!notice&&projects.length>0){
     const result=await db.from('engineering_project_review_status').select('engineering_project_id,status')
       .in('engineering_project_id',projects.map(project=>project.id));
     if(!result.error&&result.data)reviewRows=result.data as ProjectReviewRow[];
   }
-  return <AppShell title="Engenharia" eyebrow="LIBERAÇÃO DE PROJETOS"><EngineeringPanel projects={projects} updates={updates} categories={categories} role={profile.role} contractId={notice ? null : contract?.id ?? null} notice={notice} localizedWorks={localizedWorks} localizedNotice={localizedNotice} reviewRows={reviewRows} gisProjects={gisProjects} managementRows={managementRows} networkRows={networkRows} executionRows={executionRows} sourceRows={sourceRows} masterFronts={masterFronts}/></AppShell>;
+  return <AppShell title="Engenharia" eyebrow="LIBERAÇÃO DE PROJETOS"><EngineeringPanel projects={projects} updates={updates} categories={categories} role={profile.role} contractId={notice ? null : contract?.id ?? null} notice={notice} localizedWorks={localizedWorks} localizedNotice={localizedNotice} reviewRows={reviewRows} gisProjects={gisProjects} managementRows={managementRows} networkRows={networkRows} executionRows={executionRows} sourceRows={sourceRows} masterFronts={masterFronts} masterLocals={masterLocals}/></AppShell>;
 }
