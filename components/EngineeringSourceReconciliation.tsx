@@ -1,3 +1,4 @@
+import {isOperationallyReleased} from '@/lib/engineering-release-policy';
 'use client';
 import {useMemo,useState} from 'react';
 
@@ -13,7 +14,7 @@ export function EngineeringSourceReconciliation({rows}:{rows:EngineeringSourceRo
  const cityOptions=useMemo(()=>[...new Set(rows.map(r=>r.municipality))].sort(),[rows]);
  const matched=useMemo(()=>rows.filter(r=>(!city||r.municipality===city)&&(segment==='ALL'||r.segment_type===segment)&&
  [r.gis_code,r.neighborhood,r.municipality,r.master_front??''].join(' ').toLocaleLowerCase('pt-BR').includes(term.toLocaleLowerCase('pt-BR'))),[rows,city,segment,term]);
- const eligible=(r:EngineeringSourceRow)=>r.monday_project_status!=='Cancelado'&&(r.network_document_status==='NO_OBJECTION'||r.network_document_status==='UNDER_SABESP_REVIEW');
+ const eligible=(r:EngineeringSourceRow)=>r.monday_project_status!=='Cancelado'&&isOperationallyReleased(r.network_document_status);
  const totals=(segmentType:'WATER'|'SEWER')=>matched.filter(r=>r.segment_type===segmentType&&eligible(r)).reduce((a,r)=>({economies:a.economies+(r.monday_economies??0),meters:a.meters+(len(r)??0),withNetwork:a.withNetwork+(len(r)!=null?1:0),missing:a.missing+(len(r)==null?1:0)}),{economies:0,meters:0,withNetwork:0,missing:0});
  const water=totals('WATER'),sewer=totals('SEWER');
  return <section className="panel" aria-label="Conciliação Lista Mestra e Monday" style={{padding:20,marginBottom:18}}>
