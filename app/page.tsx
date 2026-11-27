@@ -122,6 +122,7 @@ export default function Dashboard(){
  const [data,setData]=useState<DashboardData|null>(null);
  const [sourceTotals,setSourceTotals]=useState<{water:{count:number,economies:number,meters:number,missing:number};sewer:{count:number,economies:number,meters:number,missing:number};matched:number}|null>(null);
  const [structures,setStructures]=useState<Structures|null>(null);
+ const [masterStructures,setMasterStructures]=useState<Structures|null>(null);
  const [stainState,setStainState]=useState<StainState|null>(null);
  const [annualTargets,setAnnualTargets]=useState<{year:number;total:number}[]>([]);
  const [attack2026,setAttack2026]=useState<{economies:number;stains:number}|null>(null);
@@ -135,13 +136,14 @@ export default function Dashboard(){
    setData(result);
    if(!result.contractId||result.source!=='supabase')return;
    const db=createClient();if(!db)return;
-   const [works,targets,stains,annual,attack,sources]=await Promise.all([
+   const [works,targets,stains,annual,attack,sources,masterLocal]=await Promise.all([
     db.from('engineering_localized_works').select('kind,quantity').eq('contract_id',result.contractId).eq('active',true),
     db.from('contract_stain_targets').select('segment_type,total_count').eq('contract_id',result.contractId),
     db.from('gis_stain_system_effective').select('segment_type,effective_status').eq('contract_id',result.contractId),
     db.from('annual_targets').select('year,target_economies').eq('contract_id',result.contractId).gte('year',2026).lte('year',2028).order('year'),
     db.from('engineering_attack_plan_2026').select('stain_id,planned_economies'),
-    db.from('engineering_source_snapshot').select('segment_type,monday_economies,monday_network_m,fallback_network_m,master_network_m,master_economies,master_front,monday_project_status,network_document_status').eq('contract_id',result.contractId)
+    db.from('engineering_source_snapshot').select('segment_type,monday_economies,monday_network_m,fallback_network_m,master_network_m,master_economies,master_front,monday_project_status,network_document_status').eq('contract_id',result.contractId),
+    db.from('engineering_master_local_snapshot').select('work_type,quantity').eq('contract_id',result.contractId)
    ]);
    if(!active)return;
 
@@ -189,6 +191,15 @@ export default function Dashboard(){
    }
    if(!attack.error&&attack.data){const unique=new Set(attack.data.map(row=>String(row.stain_id)).filter(Boolean));setAttack2026({economies:attack.data.reduce((n,row)=>n+(Number.isFinite(Number(row.planned_economies))?Math.max(0,Number(row.planned_economies)):0),0),stains:unique.size});}
    if(!annual.error&&annual.data)setAnnualTargets(annual.data.map(row=>({year:Number(row.year),total:Number(row.target_economies)})));
+   if(!masterLocal.error&&masterLocal.data){
+    const ms={reservoirs:0,boosters:0,eees:0};
+    for(const row of masterLocal.data){const n=Number(row.quantity)||0;
+      if(row.work_type==='Reservatório')ms.reservoirs+=n;
+      if(row.work_type==='Booster')ms.boosters+=n;
+      if(row.work_type==='EEE')ms.eees+=n;
+    }
+    setMasterStructures(ms);
+   }
    if(!works.error&&works.data){
     const next={reservoirs:0,boosters:0,eees:0};
     for(const row of works.data){const q=Number(row.quantity)||0;if(row.kind==='RESERVOIR')next.reservoirs+=q;if(row.kind==='BOOSTER')next.boosters+=q;if(row.kind==='EEE')next.eees+=q;}
@@ -298,7 +309,7 @@ export default function Dashboard(){
    <section className="va-bottom-grid">
     <article className="va-card"><PanelTitle icon={FileCheck2} title="ENTREGA DA ENGENHARIA"/><p className="va-notice-small"><b>{sourceTotals?sourceTotals.water.count+sourceTotals.sewer.count:"—"} projetos considerados</b> · Sem objeção ou Em análise SABESP (Lista Mestra)</p><div className="va-two-metrics"><Mini label="Economias dos projetos" value={sourceTotals?count(sourceTotals.water.economies+sourceTotals.sewer.economies):"—"} context={"Água "+count(sourceTotals?.water.economies??null)+" · Esgoto "+count(sourceTotals?.sewer.economies??null)}/><Mini label="Rede considerada" value={sourceTotals?km(sourceTotals.water.meters+sourceTotals.sewer.meters):"—"} context={"Água "+km(sourceTotals?.water.meters??null)+" · Esgoto "+km(sourceTotals?.sewer.meters??null)}/></div><p className="va-notice-small">Escopo vigente conforme Lista Mestra (3), 27/11/2026; registros Monday anteriores preservados para auditoria. Inclui redes em análise: não equivale a aprovação final nem execução.</p><Link className="va-card-action" href="/engenharia">Detalhar Engenharia ↗</Link></article>
     <article className="va-card"><PanelTitle icon={Network} title="EXECUÇÃO REAL"/><div className="va-two-metrics"><Mini label="Economias executadas" value={count(data.executed)} context="Acumulado informado"/><Mini label="Rede executada" value={km(data.networkExecuted)} context="Acumulado informado"/></div><Link className="va-card-action" href="/atualizar">Atualizar execução ↗</Link></article>
-    <article className="va-card va-structures"><PanelTitle icon={Building2} title="ESTRUTURAS CADASTRADAS"/><div className="va-structure-rows"><div><Landmark size={17}/><span>Reservatórios</span><b>{structures?count(structures.reservoirs):'—'}</b></div><div><Target size={17}/><span>Boosters</span><b>3 previstos · {structures?count(structures.boosters):'—'} cadastrados</b></div><div><Network size={17}/><span>EEEs</span><b>{structures?count(structures.eees):'—'}</b></div></div><details className="va-structure-specs"><summary>Detalhes técnicos dos equipamentos</summary><div className="va-spec-section"><strong>Boosters — dados de projeto</strong><table><thead><tr><th>Unidade</th><th>Vazão</th><th>HMT</th><th>CV</th></tr></thead><tbody><tr><td>São João</td><td>1,210 L/s</td><td>31</td><td>2</td></tr><tr><td>Vidas Novas / Núcleo Santino</td><td>1,701 L/s</td><td>34</td><td>2</td></tr><tr><td>Alto da Serra</td><td>0,400 L/s</td><td>28</td><td>1,5</td></tr></tbody></table><strong>EEE — Kronox In-Line, 1+1R</strong><table><thead><tr><th>Unidade</th><th>Vazão</th><th>HMT</th><th>CV</th></tr></thead><tbody><tr><td>01 · BE06R 18,5 kW · Ypê I</td><td>3,33</td><td>50,07</td><td>25,15</td></tr><tr><td>02 · BE06H 22 kW · Ypê I</td><td>3,89</td><td>51,61</td><td>29,91</td></tr><tr><td>03 · BE01 1,5 kW · Ypê II</td><td>1,39</td><td>13,98</td><td>2,04</td></tr><tr><td>04 · BE06H 30 kW · Ypê II</td><td>10,56</td><td>54,29</td><td>40,79</td></tr></tbody></table><small>EEE: vazão em L/s; HMT em mca. Conjuntos em linha com rotor vortex cônico. Dados fornecidos para conferência técnica; não substituem os lançamentos formais.</small></div></details><Link className="va-card-action" href="/engenharia">Abrir obras localizadas ↗</Link></article>
+    <article className="va-card va-structures"><PanelTitle icon={Building2} title="ESTRUTURAS CADASTRADAS"/><div className="va-structure-rows"><div><Landmark size={17}/><span>Reservatórios</span><b>{masterStructures?count(masterStructures.reservoirs)+' previstos · ':''}{structures?count(structures.reservoirs)+' cadastrados':'—'}</b></div><div><Target size={17}/><span>Boosters</span><b>{masterStructures?count(masterStructures.boosters)+' previstos · ':''}{structures?count(structures.boosters):'—'} cadastrados</b></div><div><Network size={17}/><span>EEEs</span><b>{masterStructures?count(masterStructures.eees)+' previstas · ':''}{structures?count(structures.eees)+' cadastradas':'—'}</b></div></div><details className="va-structure-specs"><summary>Detalhes técnicos dos equipamentos</summary><div className="va-spec-section"><strong>Boosters — dados de projeto</strong><table><thead><tr><th>Unidade</th><th>Vazão</th><th>HMT</th><th>CV</th></tr></thead><tbody><tr><td>São João</td><td>1,210 L/s</td><td>31</td><td>2</td></tr><tr><td>Vidas Novas / Núcleo Santino</td><td>1,701 L/s</td><td>34</td><td>2</td></tr><tr><td>Alto da Serra</td><td>0,400 L/s</td><td>28</td><td>1,5</td></tr></tbody></table><strong>EEE — Kronox In-Line, 1+1R</strong><table><thead><tr><th>Unidade</th><th>Vazão</th><th>HMT</th><th>CV</th></tr></thead><tbody><tr><td>01 · BE06R 18,5 kW · Ypê I</td><td>3,33</td><td>50,07</td><td>25,15</td></tr><tr><td>02 · BE06H 22 kW · Ypê I</td><td>3,89</td><td>51,61</td><td>29,91</td></tr><tr><td>03 · BE01 1,5 kW · Ypê II</td><td>1,39</td><td>13,98</td><td>2,04</td></tr><tr><td>04 · BE06H 30 kW · Ypê II</td><td>10,56</td><td>54,29</td><td>40,79</td></tr></tbody></table><small>EEE: vazão em L/s; HMT em mca. Conjuntos em linha com rotor vortex cônico. Dados fornecidos para conferência técnica; não substituem os lançamentos formais.</small></div></details><Link className="va-card-action" href="/engenharia">Abrir obras localizadas ↗</Link></article>
     <article className="va-card va-distribution"><PanelTitle icon={MapPin} title="DISTRIBUIÇÃO DAS MANCHAS"/><div className="va-distribution-inner"><div><Droplets size={24} className="va-water"/><span>Água</span><strong>{stainState?.totals.WATER??38}</strong><small>manchas</small></div><div><Waves size={24} className="va-sewer"/><span>Esgoto</span><strong>{stainState?.totals.SEWER??84}</strong><small>manchas</small></div></div><Link className="va-card-action" href="/engenharia">Visualizar por município ↗</Link></article>
    </section>
    <div className="va-bottom-note"><span>SBON 17B · Informações provenientes dos cadastros e atualizações registrados no sistema</span><Link href="/engenharia">Vitalux Ecoativa · Engenharia</Link></div>
