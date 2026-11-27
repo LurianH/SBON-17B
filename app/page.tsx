@@ -1,4 +1,4 @@
-import {isOperationallyReleased,RELEASE_POLICY_DESCRIPTION} from '@/lib/engineering-release-policy';
+import {isOperationallyReleased} from '@/lib/engineering-release-policy';
 'use client';
 
 import {useEffect,useState} from 'react';
