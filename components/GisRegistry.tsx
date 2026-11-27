@@ -51,14 +51,14 @@ export function GisRegistry({rows,role,masterFronts=[]}:{rows:GisSystemRow[];rol
  const frontFor=(row:GisSystemRow)=>masterFronts.filter(f=>f.gis_code&&norm(f.gis_code)===norm(row.gis_code)&&f.segment_type===row.segment_type&&f.municipality===row.municipality&&frontRank(f)>0).sort((a,b)=>frontRank(b)-frontRank(a)||Number(b.scope_length_m??0)-Number(a.scope_length_m??0))[0];
  const [segment,setSegment]=useState<Segment>('WATER');
  const [city,setCity]=useState(''),[keyword,setKeyword]=useState('');
- const [filterStatus,setFilterStatus]=useState<Status|'ALL'>('ALL');
+ const [filterStatus,setFilterStatus]=useState<string>('ALL');
  const [busy,setBusy]=useState<string|null>(null),[message,setMessage]=useState('');
  const byId=[...new Map(rows.map(x=>[x.id,x])).values()];
  const water=rows.filter(x=>x.segment_type==='WATER'),sewer=rows.filter(x=>x.segment_type==='SEWER');
  const current=segment==='WATER'?water:sewer;
  const filtered=current.filter(r=>(!city||r.municipality===city)
    &&(!keyword||[r.gis_code,r.neighborhood,r.linked_project_name].some(s=>s?.toLocaleLowerCase('pt-BR').includes(keyword.toLocaleLowerCase('pt-BR'))))
-   &&(filterStatus==='ALL'||r.effective_status===filterStatus));
+   &&(filterStatus==='ALL'||frontFor(r)?.front_status===filterStatus));
  const economySum=(key:'economies_ica'|'economies_ice'|'economies_iec',includeCancelled:boolean)=>{
   const found=byId.filter(r=>includeCancelled||!r.cancelled).map(r=>r[key]).filter((value):value is number=>value!==null&&value!==undefined);
   return found.reduce((sum,v)=>sum+Number(v),0);
@@ -116,7 +116,7 @@ export function GisRegistry({rows,role,masterFronts=[]}:{rows:GisSystemRow[];rol
    <div className="gis-filters">
     <label>Sistema<select value={segment} onChange={e=>setSegment(e.target.value as Segment)}><option value="WATER">Água</option><option value="SEWER">Esgoto</option></select></label>
     <label>Município<select value={city} onChange={e=>setCity(e.target.value)}><option value="">Todos</option>{cities.map(v=><option key={v}>{v}</option>)}</select></label>
-    <label>Classificação<select value={filterStatus} onChange={e=>setFilterStatus(e.target.value as Status|'ALL')}><option value="ALL">Todas</option>{Object.entries(labels).map(([key,value])=><option key={key} value={key}>{value}</option>)}</select></label>
+    <label>Situação documental<select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}><option value="ALL">Todas</option>{[...new Set(masterFronts.filter(f=>frontRank(f)>0).map(f=>f.front_status).filter((v):v is string=>Boolean(v)))].sort().map(value=><option key={value} value={value}>{value}</option>)}</select></label>
     <label>Buscar código ou bairro<input value={keyword} onChange={e=>setKeyword(e.target.value)} placeholder="Código GIS, bairro ou projeto"/></label>
    </div>
    <p className="gis-count">{filtered.length} manchas exibidas de {current.length} do sistema selecionado</p>
