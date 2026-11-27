@@ -2,6 +2,7 @@ import {redirect} from 'next/navigation';
 import {AppShell} from '@/components/AppShell';
 import {EngineeringPanel} from '@/components/EngineeringPanel';
 import type {EngineeringSourceRow} from '@/components/EngineeringSourceReconciliation';
+import type {EngineeringMasterFront} from '@/components/EngineeringProjectHub';
 import {createClient} from '@/lib/supabase/server';
 import {canReadEngineering, type Category, type Project, type Update} from '@/lib/engineering';
 import {LOCALIZED_DATABASE_ENABLED, loadLocalizedWorks} from '@/lib/localized-works-remote';
@@ -87,11 +88,16 @@ export default async function EngineeringPage() {
   let sourceRows:EngineeringSourceRow[]=[];
   if(contract&&!notice){
     for(let offset=0;;offset+=500){
-      const source=await db.from('engineering_source_snapshot').select('id,segment_type,municipality,gis_code,neighborhood,monday_economies,monday_network_m,fallback_network_m,fallback_network_source,monday_project_status,master_front,master_document_status,network_document_status,master_reference_code,source_version').eq('contract_id',contract.id).order('id').range(offset,offset+499);
+      const source=await db.from('engineering_source_snapshot').select('id,segment_type,municipality,gis_code,neighborhood,monday_economies,monday_network_m,fallback_network_m,fallback_network_source,master_network_m,master_economies,master_scope_type,monday_project_status,master_front,master_document_status,network_document_status,master_reference_code,source_version').eq('contract_id',contract.id).order('id').range(offset,offset+499);
       if(source.error){notice='Não foi possível carregar a conciliação Lista Mestra / Monday.';break;}
       sourceRows.push(...(source.data??[]) as EngineeringSourceRow[]);
       if((source.data??[]).length<500)break;
     }
+  }
+  let masterFronts:EngineeringMasterFront[]=[];
+  if(contract&&!notice){
+    const result=await db.from('engineering_master_front_snapshot').select('id,front_name,municipality,gis_code,segment_type,network_type,scope_length_m,scope_economies,front_status,document_status_rollup,source_revision').eq('contract_id',contract.id).order('id');
+    if(result.error){notice='Não foi possível consultar as frentes da Lista Mestra.';}else masterFronts=(result.data??[]) as EngineeringMasterFront[];
   }
   let reviewRows: ProjectReviewRow[]=[];
   if(contract&&!notice&&projects.length>0){
@@ -99,5 +105,5 @@ export default async function EngineeringPage() {
       .in('engineering_project_id',projects.map(project=>project.id));
     if(!result.error&&result.data)reviewRows=result.data as ProjectReviewRow[];
   }
-  return <AppShell title="Engenharia" eyebrow="LIBERAÇÃO DE PROJETOS"><EngineeringPanel projects={projects} updates={updates} categories={categories} role={profile.role} contractId={notice ? null : contract?.id ?? null} notice={notice} localizedWorks={localizedWorks} localizedNotice={localizedNotice} reviewRows={reviewRows} gisProjects={gisProjects} managementRows={managementRows} networkRows={networkRows} executionRows={executionRows} sourceRows={sourceRows}/></AppShell>;
+  return <AppShell title="Engenharia" eyebrow="LIBERAÇÃO DE PROJETOS"><EngineeringPanel projects={projects} updates={updates} categories={categories} role={profile.role} contractId={notice ? null : contract?.id ?? null} notice={notice} localizedWorks={localizedWorks} localizedNotice={localizedNotice} reviewRows={reviewRows} gisProjects={gisProjects} managementRows={managementRows} networkRows={networkRows} executionRows={executionRows} sourceRows={sourceRows} masterFronts={masterFronts}/></AppShell>;
 }
