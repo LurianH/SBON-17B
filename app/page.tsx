@@ -1,5 +1,5 @@
-import {isOperationallyReleased} from '@/lib/engineering-release-policy';
 'use client';
+import {isOperationallyReleased} from '@/lib/engineering-release-policy';
 
 import {useEffect,useState} from 'react';
 import Link from 'next/link';
