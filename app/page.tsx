@@ -77,7 +77,7 @@ const projectCode=(name:string)=>{
  const match=name.match(/(?:^|\s)(\d{3}[-_](?:AF|AR)[-_]\d+N?)(?=\s|·|$)/i);
  return match?.[1]?.replaceAll('_','-').toUpperCase()??'';
 };
-const releasedStatus=(v:string)=>v==='NO_OBJECTION'||v==='NO_OBJECTION_RESERVATIONS';
+const releasedStatus=isOperationallyReleased;
 
 function PanelTitle({icon:Icon,title,action}:{icon:typeof Target,title:string,action?:React.ReactNode}){
  return <div className="va-panel-title"><div><Icon size={22} strokeWidth={2.2}/><h2>{title}</h2></div>{action}</div>;
@@ -184,11 +184,11 @@ export default function Dashboard(){
    }
    if(!sources.error&&sources.data){
     const next={water:{count:0,economies:0,meters:0,missing:0},sewer:{count:0,economies:0,meters:0,missing:0},matched:0};
-    for(const r of sources.data){if(r.master_network_m==null)continue;if(r.master_front)next.matched++;
+    for(const r of sources.data){if(r.master_front)next.matched++;
       if(!isOperationallyReleased(r.network_document_status))continue;
       const group=r.segment_type==='WATER'?next.water:next.sewer;
       group.count++;group.economies+=Number(r.master_economies??0);group.meters+=Number(r.master_network_m??0);
-      if(r.master_network_m==null)group.missing++;
+      if(r.master_network_m==null||r.master_economies==null)group.missing++;
     }
     setSourceTotals(next);
    }
@@ -230,7 +230,7 @@ export default function Dashboard(){
  const targetWater=data.targetBreakdown?.water??(data.targetYear===2026?352:null),targetSewer=data.targetBreakdown?.sewer??(data.targetYear===2026?1357:null);
  const consideredEconomies=sourceTotals?sourceTotals.water.economies+sourceTotals.sewer.economies:null;
  const consideredWater=sourceTotals?.water.economies??null,consideredSewer=sourceTotals?.sewer.economies??null;
- const releasedStains=stainState?(['WATER','SEWER'] as const).reduce((sum,system)=>sum+(stainState.counts[system].NO_OBJECTION??0)+(stainState.counts[system].NO_OBJECTION_RESERVATIONS??0),0):null;
+ const releasedStains=stainState?(['WATER','SEWER'] as const).reduce((sum,system)=>sum+(stainState.counts[system].NO_OBJECTION??0)+(stainState.counts[system].NO_OBJECTION_RESERVATIONS??0)+(stainState.counts[system].UNDER_SABESP_REVIEW??0),0):null;
  const totalStains=stainState?stainState.totals.WATER+stainState.totals.SEWER:null;
  const todaySchedule=new Intl.DateTimeFormat('en-CA',{year:'numeric',month:'2-digit',day:'2-digit',timeZone:'America/Sao_Paulo'}).format(new Date());
  const todayInChart=todaySchedule<scheduleStart?scheduleStart:todaySchedule>scheduleEnd?scheduleEnd:todaySchedule;
@@ -263,7 +263,7 @@ export default function Dashboard(){
      <PanelTitle icon={Target} title="METAS DO CONTRATO"/>
      <p className="va-notice-small">Para fins de liberação operacional à obra: <b>Sem objeção</b> e <b>Em análise SABESP</b> são considerados <b>liberados para obra</b>. O status documental de cada frente permanece conforme a Lista Mestra; a classificação interna não altera a aprovação formal da SABESP.</p>
      <div className="va-goal-upper">
-      <div className="va-goal-systems"><GoalRow system="Água" goal={targetWater} considered={consideredWater} missingQuantities={0} executedTotal={data.executed} icon={Droplets}/><GoalRow system="Esgoto" goal={targetSewer} considered={consideredSewer} missingQuantities={0} executedTotal={data.executed} icon={Waves}/></div>
+      <div className="va-goal-systems"><GoalRow system="Água" goal={targetWater} considered={consideredWater} missingQuantities={sourceTotals?.water.missing??0} executedTotal={data.executed} icon={Droplets}/><GoalRow system="Esgoto" goal={targetSewer} considered={consideredSewer} missingQuantities={sourceTotals?.sewer.missing??0} executedTotal={data.executed} icon={Waves}/></div>
       <div className="va-plan-timelines va-timeline-executive">
  <h3>CRONOGRAMA · METAS DISTINTAS</h3><small>Cobertura da Engenharia: inclui documentos em análise SABESP; não representa liberações formais.</small>
  <div className="va-exec-lane">
@@ -276,15 +276,15 @@ export default function Dashboard(){
   <b>Engenharia <small>· liberadas para obra (critério interno)</small></b>
   <div className="va-exec-milestones va-engineering-milestones">
    <div><strong>Início</strong><span className="va-lane-point"/><small>20/07/2026</small></div>
-   <div><strong>{count(consideredEconomies)}</strong><span className="va-lane-point va-point-current"/><small>Liberadas para obra · sem objeção + análise SABESP</small></div>
+   <div><strong>{count(consideredEconomies)}</strong><span className="va-lane-point va-point-current"/><small>Liberadas para obra · sem objeção (inclusive com ressalvas) + análise SABESP</small></div>
    <div><strong>1.709</strong><span className="va-lane-point"/><small>Dez/2026</small></div>
    <div><strong>14.421</strong><span className="va-lane-point"/><small>Mai/2027</small></div>
   </div>
  </div>
  <div className="va-exec-kpis">
   <div><small>EXECUÇÃO {data.targetYear}</small><b>{count(data.executed)} / {count(currentYearGoal)}</b><span>Avanço físico</span></div>
-  <div><small>COBERTURA PROJETOS DEZ/2026</small><b>{count(consideredEconomies)} / 1.709</b><span>Cobertura da Engenharia</span></div>
-  <div><small>COBERTURA PROJETOS MAI/2027</small><b>{count(consideredEconomies)} / 14.421</b><span>Prazo final</span></div>
+  <div><small>COBERTURA PROJETOS DEZ/2026</small><b>{count(consideredEconomies)} / {count(annualGoal(2026))}</b><span>Cobertura da Engenharia</span></div>
+  <div><small>COBERTURA PROJETOS MAI/2027</small><b>{count(consideredEconomies)} / {count(officialContractTotal)}</b><span>Prazo final</span></div>
  </div>
 </div>
 </div>
@@ -313,7 +313,7 @@ export default function Dashboard(){
  </div></article>
    </section>
    <section className="va-bottom-grid">
-    <article className="va-card"><PanelTitle icon={FileCheck2} title="ENTREGA DA ENGENHARIA"/><p className="va-notice-small"><b>{sourceTotals?sourceTotals.water.count+sourceTotals.sewer.count:"—"} projetos liberados para obra</b> · Critério interno: Sem objeção ou Em análise SABESP</p><div className="va-two-metrics"><Mini label="Economias liberadas para obra" value={sourceTotals?count(sourceTotals.water.economies+sourceTotals.sewer.economies):"—"} context={"Água "+count(sourceTotals?.water.economies??null)+" · Esgoto "+count(sourceTotals?.sewer.economies??null)}/><Mini label="Rede liberada para obra" value={sourceTotals?km(sourceTotals.water.meters+sourceTotals.sewer.meters):"—"} context={"Água "+km(sourceTotals?.water.meters??null)+" · Esgoto "+km(sourceTotals?.sewer.meters??null)}/></div><p className="va-notice-small">Escopo vigente conforme Lista Mestra (3), 27/11/2026; registros Monday anteriores preservados para auditoria. Inclui redes em análise: não equivale a aprovação final nem execução.</p><Link className="va-card-action" href="/engenharia">Detalhar Engenharia ↗</Link></article>
+    <article className="va-card"><PanelTitle icon={FileCheck2} title="ENTREGA DA ENGENHARIA"/><p className="va-notice-small"><b>{sourceTotals?sourceTotals.water.count+sourceTotals.sewer.count:"—"} projetos liberados para obra</b> · Critério interno: Sem objeção (inclusive com ressalvas) ou Em análise SABESP</p><div className="va-two-metrics"><Mini label="Economias liberadas para obra" value={sourceTotals?count(sourceTotals.water.economies+sourceTotals.sewer.economies):"—"} context={"Água "+count(sourceTotals?.water.economies??null)+" · Esgoto "+count(sourceTotals?.sewer.economies??null)}/><Mini label="Rede liberada para obra" value={sourceTotals?km(sourceTotals.water.meters+sourceTotals.sewer.meters):"—"} context={"Água "+km(sourceTotals?.water.meters??null)+" · Esgoto "+km(sourceTotals?.sewer.meters??null)}/></div><p className="va-notice-small">Escopo vigente conforme Lista Mestra (3), 27/11/2026; registros Monday anteriores preservados para auditoria. Inclui redes em análise: não equivale a aprovação final nem execução.</p><Link className="va-card-action" href="/engenharia">Detalhar Engenharia ↗</Link></article>
     <article className="va-card"><PanelTitle icon={Network} title="EXECUÇÃO REAL"/><div className="va-two-metrics"><Mini label="Economias executadas" value={count(data.executed)} context="Acumulado informado"/><Mini label="Rede executada" value={km(data.networkExecuted)} context="Acumulado informado"/></div><Link className="va-card-action" href="/atualizar">Atualizar execução ↗</Link></article>
     <article className="va-card va-structures"><PanelTitle icon={Building2} title="ESTRUTURAS CADASTRADAS"/><div className="va-structure-rows"><div><Landmark size={17}/><span>Reservatórios</span><b>{masterStructures?count(masterStructures.reservoirs)+' previstos · ':''}{structures?count(structures.reservoirs)+' cadastrados':'—'}</b></div><div><Target size={17}/><span>Boosters</span><b>{masterStructures?count(masterStructures.boosters)+' previstos · ':''}{structures?count(structures.boosters):'—'} cadastrados</b></div><div><Network size={17}/><span>EEEs</span><b>{masterStructures?count(masterStructures.eees)+' previstas · ':''}{structures?count(structures.eees)+' cadastradas':'—'}</b></div></div><details className="va-structure-specs"><summary>Detalhes técnicos dos equipamentos</summary><div className="va-spec-section"><strong>Boosters — dados de projeto</strong><table><thead><tr><th>Unidade</th><th>Vazão</th><th>HMT</th><th>CV</th></tr></thead><tbody><tr><td>São João</td><td>1,210 L/s</td><td>31</td><td>2</td></tr><tr><td>Vidas Novas / Núcleo Santino</td><td>1,701 L/s</td><td>34</td><td>2</td></tr><tr><td>Alto da Serra</td><td>0,400 L/s</td><td>28</td><td>1,5</td></tr></tbody></table><strong>EEE — Kronox In-Line, 1+1R</strong><table><thead><tr><th>Unidade</th><th>Vazão</th><th>HMT</th><th>CV</th></tr></thead><tbody><tr><td>01 · BE06R 18,5 kW · Ypê I</td><td>3,33</td><td>50,07</td><td>25,15</td></tr><tr><td>02 · BE06H 22 kW · Ypê I</td><td>3,89</td><td>51,61</td><td>29,91</td></tr><tr><td>03 · BE01 1,5 kW · Ypê II</td><td>1,39</td><td>13,98</td><td>2,04</td></tr><tr><td>04 · BE06H 30 kW · Ypê II</td><td>10,56</td><td>54,29</td><td>40,79</td></tr></tbody></table><small>EEE: vazão em L/s; HMT em mca. Conjuntos em linha com rotor vortex cônico. Dados fornecidos para conferência técnica; não substituem os lançamentos formais.</small></div></details><Link className="va-card-action" href="/engenharia">Abrir obras localizadas ↗</Link></article>
     <article className="va-card va-distribution"><PanelTitle icon={MapPin} title="DISTRIBUIÇÃO DAS MANCHAS"/><div className="va-distribution-inner"><div><Droplets size={24} className="va-water"/><span>Água</span><strong>{stainState?.totals.WATER??38}</strong><small>manchas</small></div><div><Waves size={24} className="va-sewer"/><span>Esgoto</span><strong>{stainState?.totals.SEWER??84}</strong><small>manchas</small></div></div><Link className="va-card-action" href="/engenharia">Visualizar por município ↗</Link></article>
