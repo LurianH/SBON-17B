@@ -1,6 +1,6 @@
 import {redirect} from 'next/navigation';
 import {AppShell} from '@/components/AppShell';
-import {GisRegistry,type GisSystemRow} from '@/components/GisRegistry';
+import {GisRegistry,type GisSystemRow,type GisMasterFront} from '@/components/GisRegistry';
 import {createClient} from '@/lib/supabase/server';
 import {canReadEngineering} from '@/lib/engineering';
 
@@ -14,10 +14,11 @@ export default async function ManchasPage(){
  if(!profile?.active||!canReadEngineering(profile.role))redirect('/login?reason=profile');
  const {data:contract}=await db.from('contracts').select('id').eq('code','SBON 17B').eq('active',true).maybeSingle();
  if(!contract)return <AppShell title="Manchas GIS"><p>Contrato SBON 17B não encontrado.</p></AppShell>;
+ const frontResult=await db.from('engineering_master_front_snapshot').select('front_name,municipality,gis_code,segment_type,network_type,scope_length_m,scope_economies,front_status,document_status_rollup').eq('contract_id',contract.id);
  const result=await db.from('gis_stain_system_effective').select('*').eq('contract_id',contract.id)
     .order('municipality').order('gis_code').order('segment_type');
  return <AppShell title="Manchas GIS" eyebrow="CADASTRO OFICIAL · LOTE 17B">
   {result.error?<p role="alert">Não foi possível carregar o cadastro GIS. Verifique a implantação da base e tente novamente.</p>
-    :<GisRegistry rows={(result.data??[]) as GisSystemRow[]} role={profile.role}/>}
+    :<GisRegistry rows={(result.data??[]) as GisSystemRow[]} role={profile.role} masterFronts={(frontResult.data??[]) as GisMasterFront[]}/>}
  </AppShell>;
 }
