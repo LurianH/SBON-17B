@@ -1,6 +1,5 @@
 import {type SupabaseClient} from '@supabase/supabase-js';
 import {currentProjects, type CurrentProject, type Project, type Update} from './engineering';
-import {reconcileProjectQuantities,type SourceQuantity} from './engineering-source-corrections';
 
 export type EngineeringBreakdown = {
   waterEconomies: number | null; sewerEconomies: number | null;
@@ -74,60 +73,33 @@ export function summarizeDashboardEngineering(projects: Project[], updates: Upda
     engineeringDate: current.reduce<string | null>((date, p) => p.current && (!date || p.current.reference_date > date) ? p.current.reference_date : date, null)};
 }
 
-export async function loadDashboardEngineering(db: SupabaseClient, contractId: string) {
-  const projects: Project[] = [], updates: Update[] = [];
-  // Paginate both sources so PostgREST's row cap cannot silently truncate totals.
-  for (let offset = 0; ; offset += 500) {
-    const result = await db.from('engineering_projects').select('*').eq('contract_id', contractId)
-      .eq('active', true).order('id').range(offset, offset + 499);
-    if (result.error) return summarizeDashboardEngineering([], []);
-    projects.push(...result.data as Project[]);
-    if (result.data.length < 500) break;
-  }
-  for (let offset = 0; ; offset += 500) {
-    const result = await db.from('engineering_current_updates').select('*').eq('contract_id', contractId)
-      .eq('active', true).order('engineering_project_id').range(offset, offset + 499);
-    if (result.error) return summarizeDashboardEngineering([], []);
-    updates.push(...result.data as Update[]);
-    if (result.data.length < 500) break;
-  }
-  const sourcesResult=await db.from('engineering_source_snapshot').select('segment_type,gis_code,monday_network_m,fallback_network_m,monday_economies,monday_project_status,source_version').eq('contract_id',contractId);
-  const sourceRows=(sourcesResult.error?[]:sourcesResult.data??[]) as SourceQuantity[];
-  const corrected=reconcileProjectQuantities(projects,updates,[],sourceRows);
-  const base=summarizeDashboardEngineering(projects,corrected.updates);
-  const reviews=await db.from('engineering_project_review_status')
-    .select('engineering_project_id,status')
-    .in('engineering_project_id',projects.map(p=>p.id));
-  if(reviews.error||!reviews.data){
-   return {...base,releaseSummary:null};
-  }
-  const networkRows:NetworkReleaseRow[]=[];
-  for(let offset=0;;offset+=500){
-   const net=await db.from('engineering_project_network_segments').select('engineering_project_id,length_m,segment_status,active')
-     .in('engineering_project_id',projects.map(p=>p.id)).eq('active',true).order('id').range(offset,offset+499);
-   if(net.error)return {...base,releaseSummary:null,engineeringBreakdown:null,available:null,networkApproved:null};
-   networkRows.push(...net.data as NetworkReleaseRow[]);
-   if(net.data.length<500)break;
-  }
-  // Redes revisadas sem composição por diâmetro validada não devem recuperar
-  // segmentos antigos como se fossem a extensão atual do projeto.
-  const correctedIds=new Set(corrected.updates
-    .filter(row=>row.id.startsWith('current-source-'))
-    .map(row=>row.engineering_project_id));
-  const currentNetwork=networkRows.filter(row=>!correctedIds.has(row.engineering_project_id));
-  const release=summarizeEngineeringRelease(projects,corrected.updates,reviews.data as EngineeringReviewSnapshot[],currentNetwork);
-  // Indicadores gerenciais: somente projetos liberados, nunca o conjunto total
-  // de projetos GIS sem dados técnicos. Resultados incompletos não viram metas.
-  return {
-   ...base,
-   releaseSummary:release,
+export async function loadDashboardEngineering(db:SupabaseClient,contractId:string){
+ const source=await db.from('engineering_source_snapshot')
+   .select('segment_type,master_network_m,master_economies,network_document_status')
+   .eq('contract_id',contractId).not('master_network_m','is',null);
+ if(source.error||!source.data)return {engineeringBreakdown:null,available:null,networkApproved:null,engineeringDate:null,releaseSummary:null};
+ const qualified=source.data.filter(r=>
+   r.network_document_status==='NO_OBJECTION'||r.network_document_status==='UNDER_SABESP_REVIEW');
+ const segment=(type:'WATER'|'SEWER'):ReleasedSegment=>{
+   const rows=qualified.filter(r=>r.segment_type===type);
+   const economies=rows.filter(r=>r.master_economies!=null);
+   const lengths=rows.filter(r=>r.master_network_m!=null);
+   return {
+     projects:rows.length,
+     economies:{value:economies.length?economies.reduce((sum,r)=>sum+Number(r.master_economies),0):null,missing:rows.length-economies.length},
+     network:{value:lengths.length?lengths.reduce((sum,r)=>sum+Math.round(Number(r.master_network_m)*1000),0)/1000:null,missing:rows.length-lengths.length}
+   };
+ };
+ const water=segment('WATER'),sewer=segment('SEWER');
+ const releaseSummary:EngineeringReleaseSummary={water,sewer,projects:water.projects+sewer.projects};
+ return {
+   releaseSummary,
    engineeringBreakdown:{
-    waterEconomies:complete(release.water.economies),
-    sewerEconomies:complete(release.sewer.economies),
-    waterNetwork:complete(release.water.network),
-    sewerNetwork:complete(release.sewer.network)
+     waterEconomies:complete(water.economies),sewerEconomies:complete(sewer.economies),
+     waterNetwork:complete(water.network),sewerNetwork:complete(sewer.network)
    },
-   available:completeSum(release.water.economies,release.sewer.economies),
-   networkApproved:completeSum(release.water.network,release.sewer.network)
-  };
+   available:completeSum(water.economies,sewer.economies),
+   networkApproved:completeSum(water.network,sewer.network),
+   engineeringDate:'2026-11-27'
+ };
 }
