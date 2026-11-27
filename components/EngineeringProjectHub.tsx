@@ -98,7 +98,7 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,e
      master_document_status:front.document_status_rollup,master_front:front.front_name,
      network_document_status:front.front_status==='SEM OBJEÇÃO'?'NO_OBJECTION':
        front.front_status==='EM ANÁLISE SABESP'?'UNDER_SABESP_REVIEW':
-       front.front_status==='S/OBJ. C/ RES.'?'NO_OBJECTION_RESERVATIONS':'IN_PROGRESS'
+       (front.front_status==='S/OBJ. C/ RES.'||front.front_status==='SEM OBJEÇÃO COM RESSALVA')?'NO_OBJECTION_RESERVATIONS':'IN_PROGRESS'
    } as EngineeringSourceRow;
  };
  const sourceMeters=(rows:EngineeringSourceRow[])=>rows.reduce((sum,r)=>sum+sourceLength(r),0);
@@ -269,9 +269,9 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,e
    <p>Cada código GIS abre um cadastro com Água e/ou Esgoto. O detalhamento técnico pertence ao projeto e pode ter vários materiais, diâmetros e extensões.</p></div></div>
   <div className="eph-topmetrics">
    <article><span>Rede de projetos cadastrados</span><strong>{formatKm(sourceMeters(sourceRows.filter(isAuthoritative)))}</strong><small>Escopo por mancha da Lista Mestra final · não é execução</small></article>
-   <article><span>Rede liberada para obra · critério interno</span><strong>{formatKm(eligibleMeters)}</strong><small>Sem objeção + Em análise SABESP = liberadas para obra (critério interno)</small></article>
+   <article><span>Rede liberada para obra · critério interno</span><strong>{formatKm(eligibleMeters)}</strong><small>Sem objeção (inclusive com ressalvas) + Em análise SABESP = liberadas para obra (critério interno)</small></article>
    <article><span>Rede executada informada</span><strong>{formatKm(recorded(onlyAvailable,'EXECUTED'))}</strong><small>Somente trechos com execução por projeto (não é o acumulado geral)</small></article>
-   <article><span>Economias liberadas para obra · critério interno</span><strong>{fmt(eligibleEconomies)}</strong><small>{eligibleSources.length} frentes · inclui Em análise SABESP como liberada operacionalmente; não significa aprovação formal integral</small></article>
+   <article><span>Economias liberadas para obra · critério interno</span><strong>{fmt(eligibleEconomies)}</strong><small>{eligibleSources.length} frentes · inclui Em análise SABESP e Sem objeção com ressalvas como liberadas operacionalmente; não significa aprovação formal integral</small></article>
   </div>
   <div className="eph-split">
    {owners.map(([owner,label])=>{const s=responsibility(owner);return <article key={owner??'none'} className="panel eph-owner">
@@ -288,7 +288,7 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,e
     <div><span>Economias estimadas Água / Esgoto</span><b>{fmt(c.economiesWater)} / {fmt(c.economiesSewer)}</b></div>
     <div><span>Economias liberadas para obra · Lista Mestra</span><b>{fmt(frontEconomies(eligibleFronts.filter(row=>row.municipality===c.city)))}</b></div>
     <div><span>Rede de projetos informada</span><b>{formatKm(frontMeters(canonicalFronts.filter(row=>row.municipality===c.city)))}</b></div>
-    <div><span>Rede liberada para obra · Sem objeção / Em análise</span><b>{formatKm(frontMeters(eligibleFronts.filter(row=>row.municipality===c.city)))}</b></div>
+    <div><span>Rede liberada para obra · Sem objeção / Ressalvas / Em análise</span><b>{formatKm(frontMeters(eligibleFronts.filter(row=>row.municipality===c.city)))}</b></div>
     <div><span>Rede executada informada</span><b>{formatKm(c.executed)}</b></div>
    </article>)}
    </div>
