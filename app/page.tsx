@@ -95,8 +95,8 @@ function GoalRow({system,goal,considered,missingQuantities=0,executedTotal,icon:
  </div>;
 }
 type StainState={totals:Record<'WATER'|'SEWER',number>;counts:Record<'WATER'|'SEWER',Record<string,number>>};
-const categoryColors:Record<string,string>={NO_OBJECTION:'#007977',NO_OBJECTION_RESERVATIONS:'#43A68E',IN_PREPARATION:'#FB7707',IN_REVIEW:'#003399',NOT_STARTED:'#B85A00',CANCELLED:'#8A9595',UNCLASSIFIED:'#D7E2E1'};
-const categoryLabels:Record<string,string>={NO_OBJECTION:'Sem objeção',NO_OBJECTION_RESERVATIONS:'S/Obj. com ressalvas',IN_PREPARATION:'Em elaboração',IN_REVIEW:'Em revisão',NOT_STARTED:'A iniciar',CANCELLED:'Cancelado',UNCLASSIFIED:'Não classificadas'};
+const categoryColors:Record<string,string>={NO_OBJECTION:'#007977',UNDER_SABESP_REVIEW:'#1369B2',NO_OBJECTION_RESERVATIONS:'#43A68E',IN_PROGRESS:'#FB7707',NOT_STARTED:'#B85A00',OTHER:'#8A9595',UNCLASSIFIED:'#D7E2E1'};
+const categoryLabels:Record<string,string>={NO_OBJECTION:'Sem objeção',UNDER_SABESP_REVIEW:'Em análise SABESP',NO_OBJECTION_RESERVATIONS:'S/Obj. com ressalvas',IN_PROGRESS:'Em elaboração / revisão',NOT_STARTED:'Não iniciado',OTHER:'Outros',UNCLASSIFIED:'Não classificadas'};
 function StatusSystem({system,total,counts}:{system:'Água'|'Esgoto';total:number;counts:Record<string,number>|null}){
  const Icon=system==='Água'?Droplets:Waves;
  const classified=Object.entries(counts??{}).filter(([key])=>key!=='UNCLASSIFIED').reduce((sum,[,quantity])=>sum+quantity,0);
@@ -106,7 +106,7 @@ function StatusSystem({system,total,counts}:{system:'Água'|'Esgoto';total:numbe
  const stops=steps.filter(item=>item.count>0).map(item=>{const from=current;current+=total>0?item.count/total*100:0;return item.color+' '+from+'% '+current+'%';});
  const fill=total>0?'conic-gradient('+stops.join(', ')+')':'#D7E2E1';
  return <div className="va-status-system">
-  <div className="va-status-name"><Icon size={22} className={system==='Água'?'va-water':'va-sewer'}/><div><b>{system}</b><small>Total contratual: {total} manchas</small></div></div>
+  <div className="va-status-name"><Icon size={22} className={system==='Água'?'va-water':'va-sewer'}/><div><b>{system}</b><small>Manchas com rede identificada: {total}</small></div></div>
   <div className="va-status-detail">
    <div className="va-status-donut" style={{background:fill}} role="img" aria-label={total+' manchas de '+system+'; '+(total-unclassified)+' com status registrado'}><div><small>Total</small><strong>{total}</strong></div></div>
    <div className="va-status-legend">{steps.map(item=><div key={item.key}><span><i className="va-dot" style={{background:item.color}}/>{item.label}</span><b>{item.count} · {total>0?percentage(item.count/total*100):'—'}</b></div>)}</div>
@@ -194,11 +194,17 @@ export default function Dashboard(){
     for(const row of works.data){const q=Number(row.quantity)||0;if(row.kind==='RESERVOIR')next.reservoirs+=q;if(row.kind==='BOOSTER')next.boosters+=q;if(row.kind==='EEE')next.eees+=q;}
     setStructures(next);
    }
-   if(!targets.error&&!stains.error&&targets.data&&stains.data){
-    const totals:StainState['totals']={WATER:38,SEWER:84};
-    for(const row of targets.data){const seg=String(row.segment_type);if(seg==='WATER')totals.WATER=Number(row.total_count);else if(seg==='SEWER')totals.SEWER=Number(row.total_count);}
+   if(!sources.error&&sources.data){
+    const totals:StainState['totals']={WATER:0,SEWER:0};
     const counts:StainState['counts']={WATER:{},SEWER:{}};
-    for(const row of stains.data){const seg=String(row.segment_type);const status=String(row.effective_status);if(seg==='WATER')counts.WATER[status]=(counts.WATER[status]??0)+1;else if(seg==='SEWER')counts.SEWER[status]=(counts.SEWER[status]??0)+1;}
+    for(const row of sources.data){
+      if(row.master_network_m==null)continue;
+      const seg=row.segment_type as 'WATER'|'SEWER';
+      if(seg!=='WATER'&&seg!=='SEWER')continue;
+      totals[seg]++;
+      const status=String(row.network_document_status??'UNCLASSIFIED');
+      counts[seg][status]=(counts[seg][status]??0)+1;
+    }
     setStainState({totals,counts});
    }
   })();
@@ -272,7 +278,7 @@ export default function Dashboard(){
  <div className="va-plan-targets"><h3>METAS POR ANO</h3>{[2026,2027,2028].map(year=><div key={year}><span>{year}</span><b>{count(annualGoal(year))}</b></div>)}<div className="va-plan-total"><span>Total</span><b>{count(officialContractTotal)}</b></div>{annualTargetsMismatch&&<small>Revisar metas anuais cadastradas.</small>}</div>
 </div>
     </article>
-    <article className="va-card va-status"><PanelTitle icon={CheckCircle2} title="CLASSIFICAÇÃO CADASTRAL · MANCHAS GIS" action={<Link className="va-inline-link" href="/engenharia#engenharia-classificacao">Atualizar status ↗</Link>}/><div className="va-status-grid"><StatusSystem system="Água" total={stainState?.totals.WATER??38} counts={stainState?.counts.WATER??null}/><StatusSystem system="Esgoto" total={stainState?.totals.SEWER??84} counts={stainState?.counts.SEWER??null}/></div><p className="va-notice-small">Distribuição cadastral das manchas no universo contratual (GIS). Não é o status documental da Lista Mestra e não compõe os 509 das metas de Engenharia. Consulte as frentes atualizadas em Engenharia.</p><div className="va-static-chart">
+    <article className="va-card va-status"><PanelTitle icon={CheckCircle2} title="STATUS DAS REDES · LISTA MESTRA" action={<Link className="va-inline-link" href="/engenharia#engenharia-projetos">Consultar projetos ↗</Link>}/><div className="va-status-grid"><StatusSystem system="Água" total={stainState?.totals.WATER??38} counts={stainState?.counts.WATER??null}/><StatusSystem system="Esgoto" total={stainState?.totals.SEWER??84} counts={stainState?.counts.SEWER??null}/></div><p className="va-notice-small">Situação vigente das frentes de rede conforme ESCOPO_LINEARES da Lista Mestra de 27/11/2026. Uma mancha com vários trechos é contabilizada apenas uma vez por sistema; status dos documentos disponível no cadastro da Engenharia.</p><div className="va-static-chart">
  <h3>CURVA S · ESTÁTICA ESGOTO · REV. 0B</h3>
  <div className="va-static-legend">Planejado <span style={{color:'#008681'}}>━━</span> · Aprovações formais <span style={{color:'#df8b24'}}>┄┄</span></div>
  <svg viewBox="0 0 400 172" role="img" aria-label={'Cronograma revisão 0B: '+plannedNow+' de 7 frentes previstas até hoje; '+(actualNow===null?'aprovações em apuração':actualNow+' formalmente liberadas')+'.'}>
