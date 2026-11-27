@@ -102,6 +102,9 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,e
  };
  const sourceMeters=(rows:EngineeringSourceRow[])=>rows.reduce((sum,r)=>sum+sourceLength(r),0);
  const sourceEconomies=(rows:EngineeringSourceRow[])=>rows.reduce((sum,r)=>sum+Number(r.master_economies??0),0);
+ const frontMeters=(rows:EngineeringMasterFront[])=>rows.reduce((n,f)=>n+Number(f.scope_length_m??0),0);
+ const frontEconomies=(rows:EngineeringMasterFront[])=>rows.reduce((n,f)=>n+Number(f.scope_economies??0),0);
+ const eligibleFronts=canonicalFronts.filter(f=>f.front_status==='SEM OBJEÇÃO'||f.front_status==='EM ANÁLISE SABESP');
  const eligibleMeters=sourceMeters(eligibleSources);
  const eligibleEconomies=sourceEconomies(eligibleSources);
   const router=useRouter();
@@ -163,7 +166,6 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,e
   const linked=gis.filter(g=>g.engineering_project_id&&ids.has(g.engineering_project_id))
     .map(g=>sourceFor(g.gis_code,g.segment_type,g.municipality))
     .filter((s):s is EngineeringSourceRow=>Boolean(s));
-  const unique=[...new Set(linked)];
   return {count:subset.length,economies:sourceEconomies(linked.filter(eligibleSource)),approved:sourceMeters(linked.filter(eligibleSource)),
    projected:sourceMeters(linked),completed:subset.filter(p=>delivery(p)==='COMPLETED').length,
    progress:subset.filter(p=>delivery(p)==='IN_PROGRESS').length,notStarted:subset.filter(p=>delivery(p)==='NOT_STARTED').length,
@@ -283,9 +285,9 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,e
    {citySummary.map(c=><article className="panel" key={c.city}>
     <h4>{c.city}</h4><p><b>{c.count}</b> manchas · <b>{c.water}</b> Água · <b>{c.sewer}</b> Esgoto</p>
     <div><span>Economias estimadas Água / Esgoto</span><b>{fmt(c.economiesWater)} / {fmt(c.economiesSewer)}</b></div>
-    <div><span>Economias consideradas · Lista Mestra</span><b>{fmt(sourceEconomies(eligibleSources.filter(row=>row.municipality===c.city)))}</b></div>
-    <div><span>Rede de projetos informada</span><b>{formatKm(sourceMeters(sourceRows.filter(row=>row.municipality===c.city&&isAuthoritative(row))))}</b></div>
-    <div><span>Rede considerada · Sem objeção / Em análise</span><b>{formatKm(sourceMeters(eligibleSources.filter(row=>row.municipality===c.city)))}</b></div>
+    <div><span>Economias consideradas · Lista Mestra</span><b>{fmt(frontEconomies(eligibleFronts.filter(row=>row.municipality===c.city)))}</b></div>
+    <div><span>Rede de projetos informada</span><b>{formatKm(frontMeters(canonicalFronts.filter(row=>row.municipality===c.city)))}</b></div>
+    <div><span>Rede considerada · Sem objeção / Em análise</span><b>{formatKm(frontMeters(eligibleFronts.filter(row=>row.municipality===c.city)))}</b></div>
     <div><span>Rede executada informada</span><b>{formatKm(c.executed)}</b></div>
    </article>)}
    </div>
