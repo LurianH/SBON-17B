@@ -1,5 +1,6 @@
 import {type SupabaseClient} from '@supabase/supabase-js';
 import {currentProjects, type CurrentProject, type Project, type Update} from './engineering';
+import {isOperationallyReleased,OPERATIONALLY_RELEASED_NETWORK_STATUSES} from './engineering-release-policy';
 
 export type EngineeringBreakdown = {
   waterEconomies: number | null; sewerEconomies: number | null;
@@ -8,7 +9,7 @@ export type EngineeringBreakdown = {
 
 
 /** Status distintos que permitem iniciar execução, conforme regra gerencial do contrato. */
-export const RELEASED_REVIEW_STATUSES=['NO_OBJECTION','NO_OBJECTION_RESERVATIONS'] as const;
+export const RELEASED_REVIEW_STATUSES=OPERATIONALLY_RELEASED_NETWORK_STATUSES;
 export type ReleasedMetric={value:number|null;missing:number};
 export type ReleasedSegment={
  projects:number;economies:ReleasedMetric;network:ReleasedMetric;
@@ -76,10 +77,9 @@ export function summarizeDashboardEngineering(projects: Project[], updates: Upda
 export async function loadDashboardEngineering(db:SupabaseClient,contractId:string){
  const source=await db.from('engineering_source_snapshot')
    .select('segment_type,master_network_m,master_economies,network_document_status')
-   .eq('contract_id',contractId).not('master_network_m','is',null);
+   .eq('contract_id',contractId);
  if(source.error||!source.data)return {engineeringBreakdown:null,available:null,networkApproved:null,engineeringDate:null,releaseSummary:null};
- const qualified=source.data.filter(r=>
-   r.network_document_status==='NO_OBJECTION'||r.network_document_status==='UNDER_SABESP_REVIEW');
+ const qualified=source.data.filter(r=>isOperationallyReleased(r.network_document_status));
  const segment=(type:'WATER'|'SEWER'):ReleasedSegment=>{
    const rows=qualified.filter(r=>r.segment_type===type);
    const economies=rows.filter(r=>r.master_economies!=null);
