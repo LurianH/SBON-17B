@@ -10,6 +10,10 @@ import {localizedPayload, localizedRecordFromDatabase, localizedToday, localized
  type LocalizedFormRecord, type LocalizedWorkRow, type LocalizedUpdateRow} from '@/lib/localized-works-model';
 import {LOCALIZED_DATABASE_ENABLED, saveNewLocalizedWork, saveLocalizedWorkUpdate, listLocalizedWorkHistory, listLocalizedWorksForContract} from '@/lib/localized-works-remote';
 
+export type EngineeringMasterLocal={
+ id:string;front_name:string;municipality:string;gis_code:string|null;segment_type:'WATER'|'SEWER';
+ work_type:string;quantity:number;document_status_rollup:string|null;source_revision:string;
+};
 type Kind = 'RESERVOIR'|'BOOSTER'|'EEE';
 type Status = 'NOT_STARTED'|'IN_PROGRESS'|'COMPLETED'|'APPROVED';
 type Budget = 'NOT_BUDGETED'|'IN_PREPARATION'|'BUDGETED'|'UNDER_REVIEW'|'APPROVED';
@@ -24,10 +28,14 @@ const initial:RecordWork[]=[
  {...empty,id:'ref-saojoao',name:'Booster São João',stain:'553_AF_292',kind:'BOOSTER',notes:'Referência de planejamento; completar dados técnicos.'},
  {...empty,id:'ref-vidas',name:'Reservação Vidas Novas / Núcleo Santino',kind:'RESERVOIR',notes:'Reservação em estudo; capacidade definitiva pendente.'},
 ];
-export function LocalizedWorksEngineering({role,contractId,projects,initialWorks=[],notice='',readOnly=false}:{
- role:string|null;contractId:string|null;projects:Project[];initialWorks?:LocalizedWorkRow[];notice?:string;readOnly?:boolean;
+export function LocalizedWorksEngineering({role,contractId,projects,initialWorks=[],notice='',readOnly=false,masterLocals=[]}:{
+ role:string|null;contractId:string|null;projects:Project[];initialWorks?:LocalizedWorkRow[];notice?:string;readOnly?:boolean;masterLocals?:EngineeringMasterLocal[];
 }){
- const canEdit=canWriteEngineering(role)&&Boolean(contractId)&&!readOnly;
+ const norm=(s:string)=>s.replaceAll('-','_').toUpperCase();
+ const localFor=(work:RecordWork)=>masterLocals.filter(m=>m.gis_code&&norm(m.gis_code)===norm(work.stain)&&m.municipality===work.city&&
+   ((work.kind==='RESERVOIR'&&m.work_type==='Reservatório')||(work.kind==='BOOSTER'&&m.work_type==='Booster')||(work.kind==='EEE'&&m.work_type==='EEE')));
+ const masterCount=(type:string)=>masterLocals.filter(m=>m.work_type===type).reduce((n,m)=>n+Number(m.quantity),0);
+  const canEdit=canWriteEngineering(role)&&Boolean(contractId)&&!readOnly;
  const available=!LOCALIZED_DATABASE_ENABLED||Boolean(contractId)&&!notice;
  const persistedIds=new Set(initialWorks.map(w=>w.id));
  const [loadedIds,setLoadedIds]=useState<string[]>([]);
@@ -200,7 +208,7 @@ export function LocalizedWorksEngineering({role,contractId,projects,initialWorks
   setEditing({...record,referenceDate:localizedToday()});setMessage('');
  }
  return <section className="panel localized-works" aria-label="Obras localizadas">
-  <div className="localized-heading"><div><span className="localized-eyebrow">ENGENHARIA · OBRAS LOCALIZADAS</span><h2>Reservatórios, boosters e EEEs</h2><p>Controle técnico por mancha, separado das redes lineares, economias e medições.</p></div>{canEdit&&available&&<button type="button" disabled={busy} onClick={()=>openRecord({...empty,referenceDate:localizedToday()})}>Cadastrar estrutura</button>}</div>
+  <div className="localized-heading"><div><span className="localized-eyebrow">ENGENHARIA · OBRAS LOCALIZADAS</span><h2>Reservatórios, boosters e EEEs</h2><p>Controle técnico por mancha, separado das redes lineares, economias e medições. Escopo da Lista Mestra: {masterCount('Reservatório')} reservatórios, {masterCount('Booster')} boosters e {masterCount('EEE')} EEEs. Cadastro efetivo e escopo previsto são informações distintas.</p></div>{canEdit&&available&&<button type="button" disabled={busy} onClick={()=>openRecord({...empty,referenceDate:localizedToday()})}>Cadastrar estrutura</button>}</div>
   {canEdit&&available&&<button type="button" disabled={busy} onClick={prepareVidasBooster}>Preparar Booster Vidas Novas (sem duplicar)</button>}
   {canEdit&&available&&LOCALIZED_DATABASE_ENABLED&&<div className="localized-batch-update"><button type="button" disabled={busy} onClick={()=>setBatchConfirm(v=>!v)}>Aplicar atualizações técnicas em lote</button>{batchConfirm&&<div role="group" aria-label="Confirmação das atualizações técnicas"><p>Atualizar 4 EEEs e Booster São João; incluir um único Booster Vidas Novas (553_AF_88, atende também 553_AF_0001N). Preservar históricos e evitar duplicidades. As potências, vazões e HMTs serão registradas como dados de projeto, sem alterar situação física ou orçamentária.</p><button type="button" disabled={busy} onClick={()=>void applyTechnicalBatch()}>Confirmar e salvar no Supabase</button><button type="button" disabled={busy} onClick={()=>setBatchConfirm(false)}>Cancelar</button></div>}</div>}
 
@@ -226,7 +234,7 @@ export function LocalizedWorksEngineering({role,contractId,projects,initialWorks
   <div className="localized-types"><article className="localized-type"><h3>Reservatórios</h3><strong>{counts('RESERVOIR')} registro(s)</strong><p>Capacidade m³, material e projeto</p></article><article className="localized-type"><h3>Boosters</h3><strong>{counts('BOOSTER')} registro(s)</strong><p>CV, vazão (L/s) e HMT (mca)</p></article><article className="localized-type"><h3>Estações elevatórias (EEE)</h3><strong>{counts('EEE')} registro(s)</strong><p>Motobombas; hidráulico, elétrico e estrutural</p></article></div>
   <div className="localized-preview-filter"><label>Tipo de obra <select value={filter} onChange={e=>setFilter(e.target.value as typeof filter)}><option value="ALL">Todas</option>{Object.entries(kindLabels).map(([v,n])=><option key={v} value={v}>{n}</option>)}</select></label></div>
   {!visible.length&&available&&<p>Sem estruturas cadastradas para este filtro.</p>}
-  <div className="localized-table-wrap"><table className="localized-table"><thead><tr><th>Obra / estrutura</th><th>Município</th><th>Mancha</th><th>Tipo</th><th>Quant.</th><th>Dados técnicos</th><th>Orçamento</th><th>Ação</th></tr></thead><tbody>{visible.map(r=><tr key={r.id}><td>{r.name}</td><td>{r.city}</td><td>{r.stain||'A informar'}</td><td>{kindLabels[r.kind]}</td><td>{r.units}</td><td>{r.kind==='RESERVOIR'?(r.capacity?`${r.capacity} m³`:'Capacidade pendente'):`${r.power?`${r.power} CV · `:''}${r.flow?`${r.flow} L/s · `:''}${r.hmt?`${r.hmt} mca`:'Dados pendentes'}`}</td><td>{budgetLabels[r.budget]}</td><td>{canEdit&&available&&<button type="button" disabled={busy} onClick={()=>prepareEquipment(r)}>{isPersisted(r.id)?'Atualizar':'Editar'}</button>}{isPersisted(r.id)&&<button type="button" disabled={historyBusy} onClick={()=>void readHistory(r)}>Histórico</button>}</td></tr>)}</tbody></table></div>
+  <div className="localized-table-wrap"><table className="localized-table"><thead><tr><th>Obra / estrutura</th><th>Município</th><th>Mancha</th><th>Tipo</th><th>Quant.</th><th>Dados técnicos</th><th>Orçamento</th><th>Lista Mestra · documentos</th><th>Ação</th></tr></thead><tbody>{visible.map(r=><tr key={r.id}><td>{r.name}</td><td>{r.city}</td><td>{r.stain||'A informar'}</td><td>{kindLabels[r.kind]}</td><td>{r.units}</td><td>{r.kind==='RESERVOIR'?(r.capacity?`${r.capacity} m³`:'Capacidade pendente'):`${r.power?`${r.power} CV · `:''}${r.flow?`${r.flow} L/s · `:''}${r.hmt?`${r.hmt} mca`:'Dados pendentes'}`}</td><td>{budgetLabels[r.budget]}</td><td>{localFor(r).length?localFor(r).map(m=>m.front_name+': '+(m.document_status_rollup??'Não informado')).join(' | '):'Sem vínculo documental confirmado'}</td><td>{canEdit&&available&&<button type="button" disabled={busy} onClick={()=>prepareEquipment(r)}>{isPersisted(r.id)?'Atualizar':'Editar'}</button>}{isPersisted(r.id)&&<button type="button" disabled={historyBusy} onClick={()=>void readHistory(r)}>Histórico</button>}</td></tr>)}</tbody></table></div>
   {editing&&canEdit&&available&&<form onSubmit={submit} className="localized-preview-form"><h3>{editingPersisted?'Nova atualização':'Cadastrar estrutura'}</h3><fieldset disabled={busy} className="localized-preview-fields">
    <label>Obra / estrutura<input required maxLength={150} disabled={editingPersisted||busy} value={editing.name} onChange={e=>update('name',e.target.value)}/></label>
    <label>Município<select disabled={editingPersisted||busy} value={editing.city} onChange={e=>setEditing(old=>old?{...old,city:e.target.value,stain:'',planRowKey:'',engineeringProjectId:''}:old)}>{cities.map(c=><option key={c}>{c}</option>)}</select></label>
