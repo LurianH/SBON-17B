@@ -4,7 +4,7 @@ import type {ProjectNetworkRow} from '@/lib/engineering-unified-model';
 export type SourceQuantity={
   segment_type:string;gis_code:string;monday_network_m:number|string|null;
   fallback_network_m?:number|string|null;monday_economies:number|null;
-  monday_project_status?:string|null;source_version?:string|null;
+  monday_project_status?:string|null;source_version?:string|null;municipality?:string;
   master_network_m?:number|string|null;master_economies?:number|null;
 };
 
@@ -16,13 +16,16 @@ const legacyIdForCode:Record<string,string>={
   'WATER:553_AF_0001N':'a8505fb0-8fb3-47d8-bd00-588ed1f84d12',
   'WATER:764_AF_113':'7e622c51-257c-41c4-b355-f3716e526ace'
 };
-export function reconcileProjectQuantities(projects:Project[],updates:Update[],segments:ProjectNetworkRow[],sources:SourceQuantity[]){
+export function reconcileProjectQuantities(projects:Project[],updates:Update[],segments:ProjectNetworkRow[],sources:SourceQuantity[],gisRows:{gis_code:string;segment_type:string;municipality:string;engineering_project_id:string|null}[]=[]){
  const projectIds=new Set(projects.map(p=>p.id));
+ const linkedIds=new Map(gisRows.filter(g=>g.engineering_project_id).map(g=>[g.segment_type+':'+g.gis_code.replaceAll('-','_').toUpperCase()+':'+g.municipality,g.engineering_project_id!]));
+ const resolvedId=(r:SourceQuantity)=>legacyIdForCode[r.segment_type+':'+r.gis_code]??linkedIds.get(r.segment_type+':'+r.gis_code.replaceAll('-','_').toUpperCase()+':'+(r as SourceQuantity&{municipality?:string}).municipality);
  const effectiveUpdates=updates.map(x=>({...x}));
- const effectiveSegments=segments.filter(x=>x.active&&!Object.values(legacyIdForCode).includes(x.engineering_project_id)).map(x=>({...x}));
+ const effectiveSegments=segments.filter(x=>x.active).map(x=>({...x}));
  for(const source of sources){
-   const pid=legacyIdForCode[source.segment_type+':'+source.gis_code];
+   const pid=resolvedId(source);
    if(!pid||!projectIds.has(pid))continue;
+   for(let i=effectiveSegments.length-1;i>=0;i--)if(effectiveSegments[i].engineering_project_id===pid)effectiveSegments.splice(i,1);
    if(source.master_network_m==null)continue;
    const meters=source.master_network_m;
    const updatedOn=(source.source_version??'').length===10?String(source.source_version):'2026-11-23';
