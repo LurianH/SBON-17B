@@ -1,7 +1,7 @@
 'use client';
 
 import {useState} from 'react';
-import {LocalizedWorksEngineering} from '@/components/LocalizedWorksEngineering';
+import {LocalizedWorksEngineering,type EngineeringMasterLocal} from '@/components/LocalizedWorksEngineering';
 import {createClient} from '@/lib/supabase/client';
 import {canWriteEngineering, conceptLabels, currentProjects, deliveryLabels, emptyFilters, executiveLabels, filterProjects,
   municipalities, segments, type Category, type EngineeringFilters, type Project, type Update} from '@/lib/engineering';
@@ -20,7 +20,7 @@ const day = (v: string) => new Intl.DateTimeFormat('pt-BR').format(new Date(v + 
 const instant = (v: string) => new Intl.DateTimeFormat('pt-BR', {dateStyle: 'short', timeStyle: 'short'}).format(new Date(v));
 const localDate = () => {const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;};
 
-export function EngineeringPanel({projects, updates, categories, role, contractId, notice, localizedWorks=[], localizedNotice='', reviewRows=[], gisProjects=[],managementRows=[],networkRows=[],executionRows=[],sourceRows=[],masterFronts=[]}: {
+export function EngineeringPanel({projects, updates, categories, role, contractId, notice, localizedWorks=[], localizedNotice='', reviewRows=[], gisProjects=[],managementRows=[],networkRows=[],executionRows=[],sourceRows=[],masterFronts=[],masterLocals=[]}: {
   projects: Project[]; updates: Update[]; categories: Category[]; role: string | null; contractId: string | null; notice: string;
   localizedWorks?: LocalizedWorkRow[]; localizedNotice?: string;
   reviewRows?: ProjectReviewRow[];
@@ -30,6 +30,7 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
   executionRows?:EngineeringExecutionRow[];
   sourceRows?:EngineeringSourceRow[];
   masterFronts?:EngineeringMasterFront[];
+  masterLocals?:EngineeringMasterLocal[];
 }) {
   const [filters, setFilters] = useState<EngineeringFilters>(emptyFilters);
   const [feedback, setFeedback] = useState('');
@@ -86,7 +87,7 @@ export function EngineeringPanel({projects, updates, categories, role, contractI
     </nav>
     <EngineeringProjectHub projects={visible} gis={gisProjects} reviews={reviewRows} management={managementRows} network={corrected.segments} execution={executionRows} sourceRows={sourceRows} masterFronts={masterFronts} canEdit={canEdit}/>
     <div id="engenharia-estruturas" className="engineering-section-label"><h2>Obras localizadas</h2><p>Reservatórios, boosters e EEEs permanecem em cadastro de estruturas, separado dos trechos lineares.</p></div>
-    <LocalizedWorksEngineering role={role} contractId={contractId} projects={projects} initialWorks={localizedWorks} notice={localizedNotice} readOnly={director}/>
+    <LocalizedWorksEngineering role={role} contractId={contractId} projects={projects} initialWorks={localizedWorks} notice={localizedNotice} readOnly={director} masterLocals={masterLocals}/>
     <details className="panel engineering-project-history">
       <summary>Histórico técnico anterior · 13 projetos de Água preservados</summary>
       {visible.filter(p=>p.current).map(p=><div className="engineering-history-item" key={p.id}>
