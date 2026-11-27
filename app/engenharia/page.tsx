@@ -97,7 +97,7 @@ export default async function EngineeringPage() {
   }
   let masterFronts:EngineeringMasterFront[]=[];
   if(contract&&!notice){
-    const result=await db.from('engineering_master_front_snapshot').select('id,front_name,municipality,gis_code,segment_type,network_type,scope_length_m,scope_economies,front_status,document_status_rollup,source_revision').eq('contract_id',contract.id).order('id');
+    const result=await db.from('engineering_master_front_snapshot').select('id,front_name,municipality,gis_code,segment_type,network_type,scope_length_m,scope_economies,front_status,document_status_rollup,source_revision,war_room_approved,war_room_approved_at').eq('contract_id',contract.id).order('id');
     if(result.error){notice='Não foi possível consultar as frentes da Lista Mestra.';}else masterFronts=(result.data??[]) as EngineeringMasterFront[];
   }
   let masterLocals:EngineeringMasterLocal[]=[];
