@@ -16,6 +16,7 @@ export type EngineeringMasterFront={
  segment_type:'WATER'|'SEWER';network_type:string|null;
  scope_length_m:number|string|null;scope_economies:number|null;
  front_status:string|null;document_status_rollup:string|null;source_revision:string;
+ war_room_approved?:boolean;war_room_approved_at?:string|null;
 };
 type Group={id:string;code:string;city:string;neighborhood:string|null;members:{project:CurrentProject;gis:GisProjectRow}[]};
 const statuses:ProjectReviewStatus[]=['UNCLASSIFIED','NO_OBJECTION','NO_OBJECTION_RESERVATIONS','IN_PREPARATION','IN_REVIEW','NOT_STARTED','CANCELLED'];
@@ -106,6 +107,11 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,e
  const frontMeters=(rows:EngineeringMasterFront[])=>rows.reduce((n,f)=>n+Number(f.scope_length_m??0),0);
  const frontEconomies=(rows:EngineeringMasterFront[])=>rows.reduce((n,f)=>n+Number(f.scope_economies??0),0);
  const eligibleFronts=canonicalFronts.filter(f=>isOperationallyReleasedFront(f.front_status));
+ const warRoomFronts=masterFronts.filter(f=>f.war_room_approved);
+ const warRoomGroups=new Map<string,EngineeringMasterFront[]>();
+ for(const front of warRoomFronts){const key=front.segment_type+'|'+front.municipality+'|'+(front.gis_code??front.id);warRoomGroups.set(key,[...(warRoomGroups.get(key)??[]),front]);}
+ const warRoomMeters=frontMeters(warRoomFronts);
+ const warRoomEconomies=[...warRoomGroups.values()].reduce((n,group)=>n+Math.max(0,...group.map(f=>Number(f.scope_economies??0))),0);
  const eligibleMeters=sourceMeters(eligibleSources);
  const eligibleEconomies=sourceEconomies(eligibleSources);
   const router=useRouter();
@@ -268,6 +274,7 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,e
   <div className="eph-heading"><div><span className="water-linear-eyebrow">CADASTRO ÚNICO · ENGENHARIA</span><h2>Projetos, redes e entregas</h2>
    <p>Cada código GIS abre um cadastro com Água e/ou Esgoto. O detalhamento técnico pertence ao projeto e pode ter vários materiais, diâmetros e extensões.</p></div></div>
   <div className="eph-topmetrics">
+   <article><span>Concepção aprovada · Sala de Guerra</span><strong>{warRoomGroups.size} manchas</strong><small>{formatKm(warRoomMeters)} de rede · {fmt(warRoomEconomies)} economias únicas · Lista Mestra 27/11/2026. Não equivale à aprovação formal da SABESP.</small></article>
    <article><span>Rede de projetos cadastrados</span><strong>{formatKm(sourceMeters(sourceRows.filter(isAuthoritative)))}</strong><small>Escopo por mancha da Lista Mestra final · não é execução</small></article>
    <article><span>Rede liberada para obra · critério interno</span><strong>{formatKm(eligibleMeters)}</strong><small>Sem objeção (inclusive com ressalvas) + Em análise SABESP = liberadas para obra (critério interno)</small></article>
    <article><span>Rede executada informada</span><strong>{formatKm(recorded(onlyAvailable,'EXECUTED'))}</strong><small>Somente trechos com execução por projeto (não é o acumulado geral)</small></article>
@@ -322,7 +329,7 @@ export function EngineeringProjectHub({projects,gis,reviews,management,network,e
        </div>
        {masterFronts.filter(f=>f.gis_code&&normCode(f.gis_code)===normCode(record.gis_code)&&f.segment_type===p.segment_type&&f.municipality===record.municipality).map(f=>
         <div className="eph-physical-note" key={f.id}><b>{f.front_name}</b> · {f.network_type??'Frente'} · {f.scope_length_m==null?'Extensão não informada':fmt(Number(f.scope_length_m))+' m'} · {f.scope_economies==null?'Economias não informadas':fmt(f.scope_economies)+' economias'} · <b>{f.front_status??'Não informado'}</b>
-        <small>{f.document_status_rollup??'Sem documentos classificados'}</small></div>
+        <small>{f.war_room_approved?'Concepção APROVADA na Sala de Guerra · 27/11/2026 · ':''}{f.document_status_rollup??'Sem documentos classificados'}</small></div>
        )}
        {execution.some(row=>row.engineering_project_id===p.id)&&<p className="eph-physical-note">
         Execução física por diâmetro: {[...latestExecution.values()].filter(row=>row.engineering_project_id===p.id).map(row=>
