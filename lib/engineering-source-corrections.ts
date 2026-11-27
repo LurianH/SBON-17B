@@ -5,6 +5,7 @@ export type SourceQuantity={
   segment_type:string;gis_code:string;monday_network_m:number|string|null;
   fallback_network_m?:number|string|null;monday_economies:number|null;
   monday_project_status?:string|null;source_version?:string|null;
+  master_network_m?:number|string|null;master_economies?:number|null;
 };
 
 // GIS codes used to reconcile modern source records with legacy projects.
@@ -22,7 +23,8 @@ export function reconcileProjectQuantities(projects:Project[],updates:Update[],s
  for(const source of sources){
    const pid=legacyIdForCode[source.segment_type+':'+source.gis_code];
    if(!pid||!projectIds.has(pid))continue;
-   const meters=source.monday_network_m??source.fallback_network_m;
+   if(source.master_network_m==null)continue;
+   const meters=source.master_network_m;
    const updatedOn=(source.source_version??'').length===10?String(source.source_version):'2026-11-23';
    if(meters==null)continue;
    const previous=effectiveUpdates.filter(u=>u.engineering_project_id===pid)
@@ -36,11 +38,11 @@ export function reconcileProjectQuantities(projects:Project[],updates:Update[],s
      }),
      id:'current-source-'+source.gis_code,reference_date:updatedOn,
      created_at:updatedOn+'T12:00:00Z',
-     approved_length_m:Number(meters),approved_economies:source.monday_economies,
+     approved_length_m:Number(meters),approved_economies:source.master_economies??null,
      // Diameter breakdown from the older project is not validated for the new alignment.
      pead_de63_length_m:null,pead_de110_length_m:null,
      delivery_status:source.monday_project_status?.toLocaleLowerCase('pt-BR')==='em andamento'?'IN_PROGRESS':previous?.delivery_status??null,
-     notes:'Quantitativo de projeto vigente em '+updatedOn.split('-').reverse().join('/')+'. Fonte da metragem: '+(source.monday_network_m==null?'histórico':'atualização de referência do projeto')+'. Composição por diâmetro a conferir.'
+     notes:'Quantitativo de projeto conforme Lista Mestra vigente em '+updatedOn.split('-').reverse().join('/')+'. Composição por diâmetro a conferir.'
    };
    effectiveUpdates.push(revised);
    // A metragem consolidada vem da fonte atual; não criar trechos artificiais editáveis.
